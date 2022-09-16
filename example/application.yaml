@@ -1,0 +1,25 @@
+name: Riffl application
+type: ddl
+configurationOverrides:
+  execution.checkpointing.interval: 45s
+  execution.checkpointing.mode: EXACTLY_ONCE
+catalogs:
+  - createUri: example/catalog.ddl
+databases:
+  - createUri: example/database.ddl
+sources:
+  - createUri: example/source-1.ddl
+    mapUri: example/source-1-map.ddl
+    rebalance: false
+sinks:
+  - createUri: example/sink-1.ddl
+    queryUri: example/sink-1-query.ddl
+  - createUri: example/sink-2.ddl
+    queryUri: example/sink-2-query.ddl
+    distribution:
+      className: "io.riffl.sink.distribution.KeyedTaskAssigner"
+      parallelism: 5
+      properties:
+        keys:
+          - "someField_2"
+        keyParallelism: 2
