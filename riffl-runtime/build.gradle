@@ -1,0 +1,24 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'com.github.johnrengelman.shadow' version '7.1.2'
+}
+
+application {
+    mainClass = 'io.riffl.Riffl'
+}
+
+dependencies {
+    implementation(project(":riffl-core")) {
+        exclude group: 'org.apache.flink'
+        exclude group: 'com.google.code.findbugs', module: 'jsr305'
+        exclude group: 'org.slf4j'
+        exclude group: 'org.apache.logging.log4j'
+    }
+    implementation libs.flink.connector.files
+}
+
+shadowJar {
+    mergeServiceFiles()
+    zip64 true
+}
