@@ -1,0 +1,5 @@
+rootProject.name = 'riffl'
+
+include 'riffl-core'
+include 'riffl-local'
+include 'riffl-runtime'

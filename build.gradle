@@ -1,0 +1,30 @@
+plugins {
+    id 'java'
+    alias(libs.plugins.spotless)
+}
+
+allprojects {
+    group = 'io.riffl'
+    version = '0.1-SNAPSHOT'
+
+    apply plugin: "com.diffplug.spotless"
+    spotless {
+        java {
+            googleJavaFormat()
+        }
+    }
+
+    tasks.withType(JavaCompile) {
+        options.encoding = 'UTF-8'
+    }
+
+    repositories {
+        mavenCentral()
+    }
+
+    java {
+        toolchain {
+            languageVersion.set(JavaLanguageVersion.of(11))
+        }
+    }
+}

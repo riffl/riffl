@@ -1,0 +1,16 @@
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+    implementation libs.bundles.flink.core
+    implementation libs.typesafe.config
+    implementation libs.jackson.core
+    implementation libs.jackson.dataformat.yaml
+    runtimeOnly libs.bundles.log4j
+    testImplementation libs.bundles.tests
+}
+
+test {
+    useJUnitPlatform()
+}

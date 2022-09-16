@@ -1,0 +1,27 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+mainClassName = 'io.riffl.local.Riffl'
+
+dependencies {
+    implementation project(":riffl-core")
+    implementation(libs.hadoop.client) {
+        exclude group: 'org.slf4j'
+    }
+    implementation libs.flink.clients
+    implementation libs.flink.connector.files
+    implementation libs.flink.csv
+    implementation libs.flink.parquet
+    implementation libs.flink.runtime.web
+
+}
+
+//./gradlew runLocal --args='--application example/application.yaml'
+task runLocal(type: JavaExec) {
+    mainClass = 'io.riffl.local.Riffl'
+    classpath = sourceSets.main.runtimeClasspath
+    workingDir = rootProject.projectDir
+    jvmArgs = ['-Dlog4j2.configurationFile=example/log4j2.properties']
+}
