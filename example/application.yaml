@@ -11,15 +11,24 @@ sources:
   - createUri: example/source-1.ddl
     mapUri: example/source-1-map.ddl
     rebalance: false
+  - createUri: example/source-2.ddl
+    mapUri: example/source-2-map.ddl
+    rebalance: false
 sinks:
   - createUri: example/sink-1.ddl
     queryUri: example/sink-1-query.ddl
-  - createUri: example/sink-2.ddl
-    queryUri: example/sink-2-query.ddl
     distribution:
-      className: "io.riffl.sink.distribution.KeyedTaskAssigner"
+      className: "io.riffl.sink.distribution.KeyByTaskAssigner"
       parallelism: 5
       properties:
         keys:
           - "someField_2"
         keyParallelism: 2
+  - createUri: example/sink-2.ddl
+    queryUri: example/sink-2-query.ddl
+    distribution:
+      className: "io.riffl.sink.distribution.DistributeByTaskAssigner"
+      parallelism: 5
+      properties:
+        keys:
+          - "someField_2"
