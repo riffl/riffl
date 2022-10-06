@@ -45,7 +45,7 @@ sinks:
     queryUri: example/sink-2-query.ddl
     # Custom data distribution configuartion to optimise the output  
     distribution:
-      className: "io.riffl.sink.distribution.KeyedTaskAssigner"
+      className: "io.riffl.sink.distribution.KeyByTaskAssigner"
       parallelism: 5
       properties:
         keys:
