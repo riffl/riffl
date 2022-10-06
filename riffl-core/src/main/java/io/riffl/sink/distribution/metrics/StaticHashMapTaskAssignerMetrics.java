@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
 
 public class StaticHashMapTaskAssignerMetrics implements TaskAssignerMetrics, Serializable {
 
-  private static final Logger logger = LoggerFactory.getLogger(DistributeByTaskAssigner.class);
+  private static final Logger logger = LoggerFactory.getLogger(StaticHashMapTaskAssignerMetrics.class);
 
   private static final Map<Long, Map<List<Object>, Long>> metrics =
       new ConcurrentHashMap<>(
@@ -28,7 +28,7 @@ public class StaticHashMapTaskAssignerMetrics implements TaskAssignerMetrics, Se
 
   @Override
   public Map<List<Object>, Long> getMetrics() {
-    logger.info("Metrics {}, first {}, last {}", metrics, complete, current);
+    logger.debug("Metrics {}, first {}, last {}", metrics, complete, current);
     return metrics.get(complete.get());
   }
 
@@ -40,7 +40,7 @@ public class StaticHashMapTaskAssignerMetrics implements TaskAssignerMetrics, Se
       if (keySet.get(keySet.size() - 1) < checkpointId) {
         metrics.put(checkpointId, new ConcurrentHashMap<>());
         var purge = keySet.remove(0);
-        logger.info("Adding checkpointId store {}", checkpointId);
+        logger.debug("Adding checkpointId store {}", checkpointId);
 
         current.set(checkpointId);
         complete.set(keySet.get(0));
