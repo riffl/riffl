@@ -1,2 +1,3 @@
 io.riffl.sink.distribution.RebalanceTaskAssigner
-io.riffl.sink.distribution.KeyedTaskAssigner
+io.riffl.sink.distribution.KeyByTaskAssigner
+io.riffl.sink.distribution.DistributeByTaskAssigner

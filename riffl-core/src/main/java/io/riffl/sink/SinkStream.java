@@ -2,9 +2,10 @@ package io.riffl.sink;
 
 import io.riffl.config.Sink;
 import io.riffl.sink.distribution.RowDistributionFunction;
+import io.riffl.sink.distribution.StackedTaskAllocation;
+import io.riffl.sink.distribution.TaskAllocation;
 import io.riffl.sink.distribution.TaskAssigner;
 import io.riffl.sink.distribution.TaskAssignerFactory;
-import io.riffl.sink.distribution.TaskDistribution;
 import io.riffl.utils.FilesystemUtils;
 import io.riffl.utils.TableHelper;
 import java.util.List;
@@ -55,8 +56,7 @@ public class SinkStream {
   public StreamStatementSet build(List<Sink> sinks) {
     Map<String, TaskAssigner> taskAssigners = createTaskAssigners(sinks);
 
-    TaskDistribution taskDistribution = new TaskDistribution(sinks, env.getParallelism());
-    taskDistribution.distribute();
+    TaskAllocation taskAllocation = new StackedTaskAllocation(sinks, env.getParallelism());
     // Query
     Map<Sink, DataStream<Row>> queryStream =
         sinks.stream()
@@ -70,8 +70,7 @@ public class SinkStream {
                     TaskAssigner taskAssigner =
                         taskAssigners.get(sink.getDistribution().getClassName());
                     RowDistributionFunction partitioner =
-                        new RowDistributionFunction(
-                            sink, taskAssigner, taskDistribution.getTasks(sink));
+                        new RowDistributionFunction(sink, taskAssigner, taskAllocation);
                     return Map.entry(sink, repartition(tableEnv.toDataStream(query), partitioner));
                   } else {
                     return Map.entry(sink, tableEnv.toDataStream(query));

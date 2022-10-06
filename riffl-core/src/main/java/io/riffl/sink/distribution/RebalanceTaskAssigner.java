@@ -19,7 +19,7 @@ public class RebalanceTaskAssigner implements TaskAssigner, Serializable {
   public void configure(Sink sink, List<Integer> tasks) {
     this.random = ThreadLocalRandom.current();
     this.tasks = tasks;
-    logger.info(MessageFormat.format("{0} created with tasks {1}", sink, tasks));
+    logger.debug(MessageFormat.format("{0} created with tasks {1}", sink, tasks));
   }
 
   @Override

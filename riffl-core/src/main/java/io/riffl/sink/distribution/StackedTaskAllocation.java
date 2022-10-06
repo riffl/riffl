@@ -1,7 +1,7 @@
 package io.riffl.sink.distribution;
 
 import io.riffl.config.Sink;
-import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -10,39 +10,38 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class TaskDistribution implements Serializable {
+public class StackedTaskAllocation extends TaskAllocation {
 
-  private final List<Sink> sinks;
-  private final Integer parallelism;
+  private static final Logger logger = LoggerFactory.getLogger(StackedTaskAllocation.class);
+
   private Map<Sink, List<Integer>> state = new HashMap<>();
 
-  public TaskDistribution(List<Sink> sinks, Integer parallelism) {
-    this.sinks = sinks;
-    this.parallelism = parallelism;
+  public StackedTaskAllocation(List<Sink> sinks, int parallelism) {
+    super(sinks, parallelism);
   }
 
-  public List<Integer> getTasks(Sink sink) {
+  public List<Integer> getSinkTasks(Sink sink) {
     return state.get(sink);
   }
 
-  // Distribute Flink tasks across Sinks
-  public void distribute() {
-    List<Integer> tasks = IntStream.range(0, parallelism).boxed().collect(Collectors.toList());
-    Collections.shuffle(tasks, new Random(sinks.hashCode()));
-    AtomicReference<Iterator<Integer>> taskIterator = new AtomicReference<>(tasks.iterator());
-
+  public void configure() {
+    List<Integer> tasks = IntStream.range(0, getParallelism()).boxed().collect(Collectors.toList());
+    Collections.shuffle(tasks, new Random(getSinks().hashCode()));
+    List<Iterator<Integer>> taskIterator = new ArrayList<>(List.of(tasks.iterator()));
+    logger.info("Tasks {}, hashCode {}", tasks, getSinks().get(0).hashCode());
     this.state =
-        sinks.stream()
+        getSinks().stream()
             .map(
                 s -> {
                   if (s.hasDistribution() && s.getDistribution().hasParallelism()) {
                     return Map.entry(s, s.getDistribution().getParallelism());
                   } else {
-                    return Map.entry(s, parallelism);
+                    return Map.entry(s, getParallelism());
                   }
                 })
             .sorted(Comparator.comparingInt(Entry::getValue))
@@ -54,10 +53,10 @@ public class TaskDistribution implements Serializable {
                             .boxed()
                             .map(
                                 t -> {
-                                  if (!taskIterator.get().hasNext()) {
-                                    taskIterator.set(tasks.iterator());
+                                  if (!taskIterator.get(0).hasNext()) {
+                                    taskIterator.set(0, tasks.iterator());
                                   }
-                                  return taskIterator.get().next();
+                                  return taskIterator.get(0).next();
                                 })
                             .collect(Collectors.toList())))
             .collect(Collectors.toMap(Entry::getKey, Entry::getValue));
