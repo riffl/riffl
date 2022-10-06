@@ -1,15 +1,16 @@
 package io.riffl.config;
 
 import java.io.Serializable;
-import java.util.Map;
+import java.util.Objects;
+import java.util.Properties;
 
 public class Distribution implements Serializable {
 
   final String className;
-  final Map<String, Object> properties;
+  final Properties properties;
   final Integer parallelism;
 
-  public Distribution(String className, Map<String, Object> properties, Integer parallelism) {
+  public Distribution(String className, Properties properties, Integer parallelism) {
     this.className = className;
     this.properties = properties;
     this.parallelism = parallelism;
@@ -19,7 +20,7 @@ public class Distribution implements Serializable {
     return className;
   }
 
-  public Map<String, Object> getProperties() {
+  public Properties getProperties() {
     return properties;
   }
 
@@ -29,5 +30,24 @@ public class Distribution implements Serializable {
 
   public boolean hasParallelism() {
     return parallelism != null;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    Distribution that = (Distribution) o;
+    return className.equals(that.className)
+        && properties.equals(that.properties)
+        && parallelism.equals(that.parallelism);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(className, properties, parallelism);
   }
 }
