@@ -1,10 +1,10 @@
 package io.riffl.config;
 
 import com.typesafe.config.Config;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Properties;
 import java.util.stream.Collectors;
 
 abstract class ConfigBase {
@@ -78,7 +78,7 @@ abstract class ConfigBase {
     return config.getConfigList(CONFIG_SINKS).stream()
         .map(
             sink -> {
-              Map<String, Object> properties = new HashMap<String, Object>();
+              Properties properties = new Properties();
               if (sink.hasPath(CONFIG_SINK_DISTRIBUTION)
                   && sink.hasPath(CONFIG_SINK_REPARTITION_PROPERTIES)) {
                 sink.getConfig(CONFIG_SINK_REPARTITION_PROPERTIES)
