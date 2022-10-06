@@ -1,7 +1,6 @@
 package io.riffl.sink.distribution;
 
 import io.riffl.config.Sink;
-import java.util.List;
 import org.apache.flink.api.common.functions.RichMapFunction;
 import org.apache.flink.api.common.state.CheckpointListener;
 import org.apache.flink.api.java.tuple.Tuple2;
@@ -19,28 +18,43 @@ public class RowDistributionFunction extends RichMapFunction<Row, Tuple2<Row, In
   private static final Logger logger = LoggerFactory.getLogger(RebalanceTaskAssigner.class);
   private final TaskAssigner taskAssigner;
   private final Sink sink;
-  private final List<Integer> tasks;
+  private final TaskAllocation taskAllocation;
 
-  public RowDistributionFunction(Sink sink, TaskAssigner taskAssigner, List<Integer> tasks) {
+  public RowDistributionFunction(
+      Sink sink, TaskAssigner taskAssigner, TaskAllocation taskAllocation) {
     this.taskAssigner = taskAssigner;
     this.sink = sink;
-    this.tasks = tasks;
+    this.taskAllocation = taskAllocation;
   }
 
   @Override
   public void open(Configuration parameters) throws Exception {
     super.open(parameters);
-    taskAssigner.configure(sink, tasks);
+    taskAllocation.configure();
+    logger.info("Parallelism {}", getRuntimeContext().getNumberOfParallelSubtasks());
+    taskAssigner.configure(sink, taskAllocation.getSinkTasks(sink));
   }
 
   @Override
-  public void snapshotState(FunctionSnapshotContext context) throws Exception {}
+  public void snapshotState(FunctionSnapshotContext context) throws Exception {
+    if (taskAssigner instanceof CheckpointedFunction) {
+      ((CheckpointedFunction) taskAssigner).snapshotState(context);
+    }
+  }
 
   @Override
-  public void initializeState(FunctionInitializationContext context) throws Exception {}
+  public void initializeState(FunctionInitializationContext context) throws Exception {
+    if (taskAssigner instanceof CheckpointedFunction) {
+      ((CheckpointedFunction) taskAssigner).initializeState(context);
+    }
+  }
 
   @Override
-  public void notifyCheckpointComplete(long checkpointId) throws Exception {}
+  public void notifyCheckpointComplete(long checkpointId) throws Exception {
+    if (taskAssigner instanceof CheckpointListener) {
+      ((CheckpointListener) taskAssigner).notifyCheckpointComplete(checkpointId);
+    }
+  }
 
   @Override
   public Tuple2<Row, Integer> map(Row value) throws Exception {
