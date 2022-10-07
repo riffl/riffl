@@ -1,6 +1,5 @@
 package io.riffl.sink.distribution.metrics;
 
-import io.riffl.sink.distribution.DistributeByTaskAssigner;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
@@ -12,7 +11,8 @@ import org.slf4j.LoggerFactory;
 
 public class StaticHashMapTaskAssignerMetrics implements TaskAssignerMetrics, Serializable {
 
-  private static final Logger logger = LoggerFactory.getLogger(StaticHashMapTaskAssignerMetrics.class);
+  private static final Logger logger =
+      LoggerFactory.getLogger(StaticHashMapTaskAssignerMetrics.class);
 
   private static final Map<Long, Map<List<Object>, Long>> metrics =
       new ConcurrentHashMap<>(
