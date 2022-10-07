@@ -161,7 +161,7 @@ public class DistributeByTaskAssignerTests {
   }
 
   @Test
-  void tasksShouldBeAssigned_OnLowThroughput() throws Exception {
+  void tasksShouldBeAssignedOnLowThroughput() throws Exception {
     List<Integer> tasks = IntStream.rangeClosed(0, 50000).boxed().collect(Collectors.toList());
     var taskAssigner = getTaskAssigner(tasks, properties, metrics, taskAssignment);
 
@@ -175,7 +175,7 @@ public class DistributeByTaskAssignerTests {
   }
 
   @Test
-  void rowShouldBeHandled_WithStandardValues() throws Exception {
+  void rowShouldBeHandledWithStandardValues() throws Exception {
     List<Integer> tasks = IntStream.rangeClosed(0, 1).boxed().collect(Collectors.toList());
     var taskAssigner = getTaskAssigner(tasks, properties, metrics, taskAssignment);
 
@@ -193,5 +193,35 @@ public class DistributeByTaskAssignerTests {
 
     assertTrue(metrics.getMetrics().containsKey(key));
     assertEquals(1, metrics.getMetrics().get(key));
+  }
+
+  @Test
+  void tasksShouldBeAssignedAccordingToWeightWithUnorderedTasks() throws Exception {
+    List<Integer> tasks = List.of(1, 0, 9, 5, 3);
+    var taskAssigner = getTaskAssigner(tasks, properties, metrics, taskAssignment);
+
+    IntStream.rangeClosed(0, 2)
+        .forEach(
+            l -> {
+              IntStream.rangeClosed(0, 9).forEach(s -> metrics.add(List.of(l, s), 140L));
+            });
+    metrics.add(List.of(1, 1), 7170L);
+
+    ((CheckpointedFunction) taskAssigner).snapshotState(context);
+
+    IntStream.rangeClosed(0, 2)
+        .forEach(
+            l -> {
+              IntStream.rangeClosed(0, 9)
+                  .forEach(
+                      i -> {
+                        if (List.of(1, 1).equals(List.of(l, i))) {
+                          assertEquals(List.of(1, 0, 9), taskAssignment.get(List.of(l, i)));
+                        } else {
+                          assertTrue(
+                              List.of(5, 3).contains(taskAssignment.get(List.of(l, i)).get(0)));
+                        }
+                      });
+            });
   }
 }

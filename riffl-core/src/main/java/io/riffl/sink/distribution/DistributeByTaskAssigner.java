@@ -94,9 +94,6 @@ public class DistributeByTaskAssigner implements TaskAssigner, CheckpointedFunct
   private void calculateAssignment(
       List<Integer> tasks, Map<List<Object>, Long> keysMetrics, TaskAssignment keyTaskAssignment) {
     if (keysMetrics != null && !keysMetrics.isEmpty()) {
-      List<Integer> tasksReversed =
-          tasks.stream().sorted(Comparator.reverseOrder()).collect(Collectors.toList());
-
       if (keysMetrics.size() == 1) {
         keyTaskAssignment.put(keysMetrics.keySet().iterator().next(), tasks);
       } else {
@@ -118,9 +115,9 @@ public class DistributeByTaskAssigner implements TaskAssigner, CheckpointedFunct
             keyTaskAssignment.put(item.getKey(), tasks.subList(previousTask, currentTask));
           } else {
             // distribute light keys over remaining tasks
-            var position = item.hashCode() % (tasks.size() - currentTask);
+            var position = item.getKey().hashCode() % (tasks.size() - currentTask);
             keyTaskAssignment.put(
-                item.getKey(), Collections.singletonList(tasksReversed.get(position)));
+                item.getKey(), Collections.singletonList(tasks.get((tasks.size() - 1) - position)));
           }
         }
       }
