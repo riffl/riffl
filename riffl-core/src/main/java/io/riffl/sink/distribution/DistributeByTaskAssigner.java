@@ -20,10 +20,12 @@ import org.apache.flink.types.Row;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// [todo - metrics should be persisted/recovered through state]
+// [todo - metrics should be persisted/recovered using state]
 // [todo - hold and merge previous metrics]
 // [todo - store metrics externally to build task maps across entire application]
 public class DistributeByTaskAssigner implements TaskAssigner, CheckpointedFunction, Serializable {
+
+  static final String PROPERTIES_TYPE = "type";
 
   static final String PROPERTIES_KEYS = "keys";
 
@@ -39,6 +41,17 @@ public class DistributeByTaskAssigner implements TaskAssigner, CheckpointedFunct
 
   private final TaskAssignerMetrics metrics;
 
+  enum Type {
+    WEIGHT
+  }
+
+  enum MetricType {
+    COUNT,
+    BYTES
+  }
+
+  private MetricType metricType;
+
   public DistributeByTaskAssigner() {
     this(new TaskAssignment(), new StaticHashMapTaskAssignerMetrics());
   }
@@ -47,8 +60,6 @@ public class DistributeByTaskAssigner implements TaskAssigner, CheckpointedFunct
     this.taskAssignment = taskAssignment;
     this.metrics = metrics;
   }
-
-  private MetricType metricType;
 
   @Override
   public void snapshotState(FunctionSnapshotContext context) {
@@ -70,11 +81,6 @@ public class DistributeByTaskAssigner implements TaskAssigner, CheckpointedFunct
 
   @Override
   public void initializeState(FunctionInitializationContext context) throws Exception {}
-
-  enum MetricType {
-    COUNT,
-    BYTES
-  }
 
   @Override
   public void configure(Sink sink, List<Integer> tasks) {
