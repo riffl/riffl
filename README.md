@@ -1,4 +1,5 @@
 # Riffl
+![gradle](https://github.com/riffl/riffl/actions/workflows/gradle.yml/badge.svg)
 
 Riffl is a generic streaming data ingestion framework currently build on top of Flink leveraging Table API.
 It aims for its processing to be simple to define and reason about with YAML configuration and SQL expressions.
