@@ -1,6 +1,7 @@
 package io.riffl.config;
 
 import com.typesafe.config.Config;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -20,12 +21,14 @@ abstract class ConfigBase {
   private static final String CONFIG_MAP_URI = "mapUri";
   private static final String CONFIG_QUERY_URI = "queryUri";
   private static final String CONFIG_SINK_DISTRIBUTION = "distribution";
+  protected static final String CONFIG_OVERRIDES = "overrides";
+  protected static final String CONFIG_DELIMITER = ".";
   private static final String CONFIG_SINK_REPARTITION_CLASS_NAME =
-      CONFIG_SINK_DISTRIBUTION + ".className";
+      CONFIG_SINK_DISTRIBUTION + CONFIG_DELIMITER + "className";
   private static final String CONFIG_SINK_REPARTITION_PROPERTIES =
-      CONFIG_SINK_DISTRIBUTION + ".properties";
+      CONFIG_SINK_DISTRIBUTION + CONFIG_DELIMITER + "properties";
   private static final String CONFIG_SINK_REPARTITION_PARALLELISM =
-      CONFIG_SINK_DISTRIBUTION + ".parallelism";
+      CONFIG_SINK_DISTRIBUTION + CONFIG_DELIMITER + "parallelism";
 
   private static final String CONFIG_EXECUTION_OVERRIDES = "configurationOverrides";
 
@@ -39,6 +42,23 @@ abstract class ConfigBase {
     return getConfig().getConfig(CONFIG_EXECUTION_OVERRIDES).root().unwrapped().entrySet().stream()
         .map(c -> Map.entry(c.getKey(), c.getValue().toString()))
         .collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+  }
+
+  public Properties getOverrides() {
+    var properties = new Properties();
+    if (getConfig().hasPath(CONFIG_OVERRIDES)) {
+      properties.putAll(
+          ConfigUtils.parseKeys(CONFIG_OVERRIDES, getConfig().getConfig(CONFIG_OVERRIDES).root())
+              .stream()
+              .map(
+                  key -> {
+                    Collections.reverse(key);
+                    return String.join(CONFIG_DELIMITER, key);
+                  })
+              .distinct()
+              .collect(Collectors.toMap(k -> k, k -> getConfig().getValue(k).unwrapped())));
+    }
+    return properties;
   }
 
   public List<Catalog> getCatalogs() {

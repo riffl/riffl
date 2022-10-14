@@ -1,0 +1,16 @@
+name: Riffl application
+overrides:
+  s3a.bucket: "s3://bucket"
+  s3:
+    timeout: 60
+    path: "path/"
+execution:
+  type: FLINK
+  configuration:
+    execution.checkpointing.interval: 45s
+    execution.checkpointing.mode: EXACTLY_ONCE
+    execution.some.s3.timeout: ${overrides.s3.timeout}
+catalogs:
+  - createUri: ${overrides.s3a.bucket}/${overrides.s3.path}example/catalog.ddl
+databases:
+  - createUri: example/database.ddl

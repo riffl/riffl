@@ -1,16 +1,17 @@
 package io.riffl.sink;
 
+import io.riffl.config.ConfigUtils;
 import io.riffl.config.Sink;
 import io.riffl.sink.distribution.RowDistributionFunction;
 import io.riffl.sink.distribution.StackedTaskAllocation;
 import io.riffl.sink.distribution.TaskAllocation;
 import io.riffl.sink.distribution.TaskAssigner;
 import io.riffl.sink.distribution.TaskAssignerFactory;
-import io.riffl.utils.FilesystemUtils;
 import io.riffl.utils.TableHelper;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Properties;
 import java.util.stream.Collectors;
 import org.apache.flink.api.common.functions.Partitioner;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
@@ -53,7 +54,7 @@ public class SinkStream {
         .returns(stream.getType());
   }
 
-  public StreamStatementSet build(List<Sink> sinks) {
+  public StreamStatementSet build(List<Sink> sinks, Properties overrides) {
     Map<String, TaskAssigner> taskAssigners = createTaskAssigners(sinks);
 
     TaskAllocation taskAllocation = new StackedTaskAllocation(sinks, env.getParallelism());
@@ -64,7 +65,7 @@ public class SinkStream {
                 sink -> {
                   Table query =
                       tableEnv.sqlQuery(
-                          FilesystemUtils.openFileAsString(new Path(sink.getQueryUri())));
+                          ConfigUtils.openFileAsString(new Path(sink.getQueryUri()), overrides));
 
                   if (sink.hasDistribution()) {
                     TaskAssigner taskAssigner =
@@ -83,7 +84,7 @@ public class SinkStream {
     queryStream.forEach(
         (key, value) -> {
           Path definitionPath = new Path(key.getCreateUri());
-          tableEnv.executeSql(FilesystemUtils.openFileAsString(definitionPath));
+          tableEnv.executeSql(ConfigUtils.openFileAsString(definitionPath, overrides));
 
           ObjectIdentifier sinkId =
               TableHelper.getCreateTableIdentifier(definitionPath, env, tableEnv);
