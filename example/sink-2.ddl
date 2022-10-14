@@ -6,5 +6,5 @@ CREATE TABLE IF NOT EXISTS `custom_catalog`.`default`.`sink_2` (
 WITH (
   'connector'='filesystem',
   'format'='parquet',
-  'path'='file:///tmp/riffl'
+  'path'='${overrides.sink-2.path}'
 )

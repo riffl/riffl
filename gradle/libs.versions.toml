@@ -6,7 +6,7 @@ junit = "5.8.2"
 typesafe-config = "1.4.2"
 jackson = "2.13.3"
 hadoop-local-runner = "2.10.2" # riffl-local
-
+commons-text = "1.10.0"
 spotless = "6.11.0"
 
 [libraries]
@@ -37,6 +37,7 @@ mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version.
 typesafe-config = { module = "com.typesafe:config", version.ref = "typesafe-config" }
 jackson-core = { module = "com.fasterxml.jackson.core:jackson-core", version.ref = "jackson" }
 jackson-dataformat-yaml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml", version.ref = "jackson" }
+commons-text = { module = "org.apache.commons:commons-text", version.ref = "commons-text" }
 
 [bundles]
 flink-core = [

@@ -6,5 +6,5 @@ CREATE TABLE IF NOT EXISTS sink_1 (
 WITH (
   'connector'='filesystem',
   'format'='csv',
-  'path'='file:///tmp/riffl'
+  'path'='${overrides.sink-1.path}'
 )

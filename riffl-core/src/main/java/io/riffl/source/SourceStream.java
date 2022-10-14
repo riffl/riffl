@@ -1,12 +1,13 @@
 package io.riffl.source;
 
+import io.riffl.config.ConfigUtils;
 import io.riffl.config.Source;
-import io.riffl.utils.FilesystemUtils;
 import io.riffl.utils.TableHelper;
 import java.text.MessageFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Properties;
 import java.util.stream.Collectors;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.streaming.api.datastream.DataStream;
@@ -36,19 +37,19 @@ public class SourceStream {
     logger.info(this.tableEnv.getCurrentCatalog());
   }
 
-  public Map<Source, DataStream<Row>> build(List<Source> config) {
-    return config.stream()
+  public Map<Source, DataStream<Row>> build(List<Source> sources, Properties overrides) {
+    return sources.stream()
         .map(
             source -> {
               Path definitionPath = new Path(source.getCreateUri());
-              tableEnv.executeSql(FilesystemUtils.openFileAsString(definitionPath));
+              tableEnv.executeSql(ConfigUtils.openFileAsString(definitionPath, overrides));
               ObjectIdentifier sourceId =
                   TableHelper.getCreateTableIdentifier(definitionPath, env, tableEnv);
 
               Table map;
               if (source.getMapUri() != null) {
                 Path mapPath = new Path(source.getMapUri());
-                map = tableEnv.sqlQuery(FilesystemUtils.openFileAsString(mapPath));
+                map = tableEnv.sqlQuery(ConfigUtils.openFileAsString(mapPath, overrides));
 
                 if (tableEnv.getCatalog(sourceId.getCatalogName()).isPresent()) {
                   Catalog catalog = tableEnv.getCatalog(sourceId.getCatalogName()).get();
