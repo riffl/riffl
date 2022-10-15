@@ -43,10 +43,14 @@ public class Launcher {
 
     appConfig
         .getCatalogs()
-        .forEach(meta -> MetaRegistration.register(tableEnv, meta.getCreateUri()));
+        .forEach(
+            meta ->
+                MetaRegistration.register(tableEnv, meta.getCreateUri(), appConfig.getOverrides()));
     appConfig
         .getDatabases()
-        .forEach(meta -> MetaRegistration.register(tableEnv, meta.getCreateUri()));
+        .forEach(
+            meta ->
+                MetaRegistration.register(tableEnv, meta.getCreateUri(), appConfig.getOverrides()));
 
     new SourceStream(env, tableEnv).build(appConfig.getSources(), appConfig.getOverrides());
 
