@@ -1,9 +1,9 @@
-package io.riffl.sink.distribution;
+package io.riffl.sink.row;
 
 import io.riffl.config.ConfigUtils;
 import io.riffl.config.Sink;
-import io.riffl.sink.distribution.metrics.StaticHashMapTaskAssignerMetrics;
-import io.riffl.sink.distribution.metrics.TaskAssignerMetrics;
+import io.riffl.sink.metrics.StaticHashMapTaskAssignerMetrics;
+import io.riffl.sink.metrics.TaskAssignerMetrics;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;

@@ -1,4 +1,4 @@
-package io.riffl.sink.distribution;
+package io.riffl.sink.allocation;
 
 import io.riffl.config.Sink;
 import java.io.Serializable;

@@ -1,6 +1,9 @@
-package io.riffl.sink.distribution;
+package io.riffl.sink;
 
 import io.riffl.config.Sink;
+import io.riffl.sink.allocation.TaskAllocation;
+import io.riffl.sink.row.RebalanceTaskAssigner;
+import io.riffl.sink.row.TaskAssigner;
 import org.apache.flink.api.common.functions.RichMapFunction;
 import org.apache.flink.api.common.state.CheckpointListener;
 import org.apache.flink.api.java.tuple.Tuple2;

@@ -1,4 +1,4 @@
-package io.riffl.sink.distribution;
+package io.riffl.sink.row;
 
 import java.text.MessageFormat;
 import java.util.Optional;
