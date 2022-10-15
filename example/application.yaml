@@ -3,10 +3,11 @@ overrides:
   ddl.path: ""
   sink-1.path: "file:///tmp/riffl-sink-1"
   sink-2.path: "file:///tmp/riffl-sink-2"
-type: ddl
-configurationOverrides:
-  execution.checkpointing.interval: 45s
-  execution.checkpointing.mode: EXACTLY_ONCE
+execution:
+  type: FLINK
+  configuration:
+    execution.checkpointing.interval: 45s
+    execution.checkpointing.mode: EXACTLY_ONCE
 catalogs:
   - createUri: ${overrides.ddl.path}example/catalog.ddl
 databases:
