@@ -1,4 +1,4 @@
-package io.riffl.sink.distribution.metrics;
+package io.riffl.sink.metrics;
 
 import java.util.List;
 import java.util.Map;

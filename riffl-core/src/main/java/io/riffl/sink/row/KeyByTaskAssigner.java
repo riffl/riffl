@@ -1,4 +1,4 @@
-package io.riffl.sink.distribution;
+package io.riffl.sink.row;
 
 import io.riffl.config.ConfigUtils;
 import io.riffl.config.Sink;

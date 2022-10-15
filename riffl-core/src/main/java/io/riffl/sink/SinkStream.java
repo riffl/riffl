@@ -2,11 +2,10 @@ package io.riffl.sink;
 
 import io.riffl.config.ConfigUtils;
 import io.riffl.config.Sink;
-import io.riffl.sink.distribution.RowDistributionFunction;
-import io.riffl.sink.distribution.StackedTaskAllocation;
-import io.riffl.sink.distribution.TaskAllocation;
-import io.riffl.sink.distribution.TaskAssigner;
-import io.riffl.sink.distribution.TaskAssignerFactory;
+import io.riffl.sink.allocation.StackedTaskAllocation;
+import io.riffl.sink.allocation.TaskAllocation;
+import io.riffl.sink.row.TaskAssigner;
+import io.riffl.sink.row.TaskAssignerFactory;
 import io.riffl.utils.TableHelper;
 import java.util.List;
 import java.util.Map;

@@ -1,4 +1,4 @@
-package io.riffl.sink.distribution;
+package io.riffl.sink.row;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;

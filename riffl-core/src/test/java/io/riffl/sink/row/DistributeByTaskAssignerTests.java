@@ -1,11 +1,11 @@
-package io.riffl.sink.distribution;
+package io.riffl.sink.row;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.riffl.config.Distribution;
 import io.riffl.config.Sink;
-import io.riffl.sink.distribution.metrics.TaskAssignerMetrics;
+import io.riffl.sink.metrics.TaskAssignerMetrics;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;

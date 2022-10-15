@@ -1,4 +1,4 @@
-package io.riffl.sink.distribution;
+package io.riffl.sink.row;
 
 import java.io.Serializable;
 import java.util.HashMap;

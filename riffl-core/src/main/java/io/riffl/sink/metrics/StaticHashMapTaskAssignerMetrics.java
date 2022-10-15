@@ -1,4 +1,4 @@
-package io.riffl.sink.distribution.metrics;
+package io.riffl.sink.metrics;
 
 import java.io.Serializable;
 import java.util.List;

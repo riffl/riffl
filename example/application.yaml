@@ -23,7 +23,7 @@ sinks:
   - createUri: example/sink-1.ddl
     queryUri: example/sink-1-query.ddl
     distribution:
-      className: "io.riffl.sink.distribution.KeyByTaskAssigner"
+      className: "io.riffl.sink.row.KeyByTaskAssigner"
       parallelism: 5
       properties:
         keys:
@@ -32,7 +32,7 @@ sinks:
   - createUri: example/sink-2.ddl
     queryUri: example/sink-2-query.ddl
     distribution:
-      className: "io.riffl.sink.distribution.DistributeByTaskAssigner"
+      className: "io.riffl.sink.row.DistributeByTaskAssigner"
       parallelism: 5
       properties:
         keys:

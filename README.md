@@ -21,10 +21,12 @@ e.g. location (hdfs|s3a|file|...) hdfs:///riffl/config/config.yaml
 name: Riffl application
 type: ddl
 
-# Flink execution configuration overrides
-configurationOverrides:
-  execution.checkpointing.interval: 45s
-  execution.checkpointing.mode: EXACTLY_ONCE
+# Execution configuration overrides
+execution:
+  type: FLINK
+  configuration:
+    execution.checkpointing.interval: 45s
+    execution.checkpointing.mode: EXACTLY_ONCE
 
 # [Optional] Catalog/Database definitions to support external integration points like Hive or Iceberg
 catalogs:                                        
@@ -46,7 +48,7 @@ sinks:
     queryUri: example/sink-2-query.ddl
     # Custom data distribution configuartion to optimise the output  
     distribution:
-      className: "io.riffl.sink.distribution.KeyByTaskAssigner"
+      className: "io.riffl.sink.row.KeyByTaskAssigner"
       parallelism: 5
       properties:
         keys:
