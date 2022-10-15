@@ -3,8 +3,6 @@ package io.riffl.config;
 import com.typesafe.config.Config;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.stream.Collectors;
 
@@ -30,18 +28,16 @@ abstract class ConfigBase {
   private static final String CONFIG_SINK_REPARTITION_PARALLELISM =
       CONFIG_SINK_DISTRIBUTION + CONFIG_DELIMITER + "parallelism";
 
-  private static final String CONFIG_EXECUTION_OVERRIDES = "configurationOverrides";
+  private static final String CONFIG_EXECUTION = "execution";
+
+  private static final String CONFIG_EXECUTION_CONFIGURATION =
+      CONFIG_EXECUTION + CONFIG_DELIMITER + "configuration";
+  private static final String CONFIG_EXECUTION_TYPE = CONFIG_EXECUTION + CONFIG_DELIMITER + "type";
 
   abstract Config getConfig();
 
   public String getName() {
     return getConfig().getString(CONFIG_NAME);
-  }
-
-  public Map<String, String> getExecutionOverrides() {
-    return getConfig().getConfig(CONFIG_EXECUTION_OVERRIDES).root().unwrapped().entrySet().stream()
-        .map(c -> Map.entry(c.getKey(), c.getValue().toString()))
-        .collect(Collectors.toMap(Entry::getKey, Entry::getValue));
   }
 
   public Properties getOverrides() {
@@ -68,6 +64,14 @@ abstract class ConfigBase {
             .map(catalog -> new Catalog(catalog.getString(CONFIG_CREATE_URI)))
             .collect(Collectors.toList())
         : List.of();
+  }
+
+  public Execution getExecution() {
+    Config config = getConfig();
+    var type = Execution.Type.valueOf(config.getString(CONFIG_EXECUTION_TYPE));
+    var configuration = new Properties();
+    configuration.putAll(config.getConfig(CONFIG_EXECUTION_CONFIGURATION).root().unwrapped());
+    return new Execution(type, configuration);
   }
 
   public List<Database> getDatabases() {

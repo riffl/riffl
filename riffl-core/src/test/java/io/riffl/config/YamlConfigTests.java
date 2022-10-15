@@ -3,6 +3,7 @@ package io.riffl.config;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import io.riffl.config.Execution.Type;
 import java.util.Map;
 import java.util.Properties;
 import org.apache.flink.core.fs.Path;
@@ -54,5 +55,18 @@ public class YamlConfigTests {
     var result = ConfigUtils.openFileAsString(new Path("src/test/resources/testSink.ddl"), props);
 
     assertEquals("WITH ('path'='file://bucket/path/')", result);
+  }
+
+  @Test
+  void executionShouldBeLoaded() {
+    Path definitionPath = new Path("src/test/resources/testApplication.yaml");
+    var config = new YamlConfig(ConfigUtils.openFileAsString(definitionPath));
+    assertEquals(Type.FLINK, config.getExecution().getType());
+    assertEquals(
+        Map.of(
+            "execution.checkpointing.interval", "45s",
+            "execution.checkpointing.mode", "EXACTLY_ONCE",
+            "execution.some.s3.timeout", 60),
+        config.getExecution().getProperties());
   }
 }
