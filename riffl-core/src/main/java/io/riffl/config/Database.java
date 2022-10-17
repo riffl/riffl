@@ -1,13 +1,13 @@
 package io.riffl.config;
 
 public class Database {
-  final String createUri;
+  final String create;
 
-  public Database(String createUri) {
-    this.createUri = createUri;
+  public Database(String create) {
+    this.create = create;
   }
 
-  public String getCreateUri() {
-    return createUri;
+  public String getCreate() {
+    return create;
   }
 }

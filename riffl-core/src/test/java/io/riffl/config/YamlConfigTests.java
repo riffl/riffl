@@ -4,8 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import io.riffl.config.Execution.Type;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.Properties;
 import org.apache.flink.core.fs.Path;
 import org.junit.jupiter.api.Test;
 
@@ -28,7 +28,8 @@ public class YamlConfigTests {
   void yamlConfigPlaceholdersShouldBeExpanded() {
     Path definitionPath = new Path("src/test/resources/testApplication.yaml");
     var config = new YamlConfig(ConfigUtils.openFileAsString(definitionPath));
-    assertEquals("s3://bucket/path/example/catalog.ddl", config.getCatalogs().get(0).createUri);
+    assertEquals(
+        "WITH ('path'='${overrides.bucket}${overrides.path}')", config.getCatalogs().get(0).create);
   }
 
   @Test
@@ -37,22 +38,24 @@ public class YamlConfigTests {
     var config = new YamlConfig(ConfigUtils.openFileAsString(definitionPath));
     assertEquals(
         Map.of(
-            "overrides.s3.timeout",
-            60,
-            "overrides.s3.path",
-            "path/",
-            "overrides.s3a.bucket",
-            "s3://bucket"),
-        config.getOverrides());
+            "name", "Riffl application",
+            "overrides.s3.timeout", 60,
+            "overrides.s3.path", "src/test/resources/",
+            "overrides.s3a.bucket", "./",
+            "execution.type", "FLINK",
+            "execution.configuration.execution.checkpointing.mode", "EXACTLY_ONCE",
+            "execution.configuration.execution.some.s3.timeout", "${overrides.s3.timeout}"),
+        config.getConfigAsMap());
   }
 
   @Test
   void configFilesShouldLoadedWithOverrides() {
-    var props = new Properties();
-    props.put("overrides.bucket", "file://bucket/");
-    props.put("overrides.path", "path/");
+    var substitutes = new HashMap<String, Object>();
+    substitutes.put("overrides.bucket", "file://bucket/");
+    substitutes.put("overrides.path", "path/");
 
-    var result = ConfigUtils.openFileAsString(new Path("src/test/resources/testSink.ddl"), props);
+    var result =
+        ConfigUtils.openFileAsString(new Path("src/test/resources/testSink.ddl"), substitutes);
 
     assertEquals("WITH ('path'='file://bucket/path/')", result);
   }
@@ -63,10 +66,7 @@ public class YamlConfigTests {
     var config = new YamlConfig(ConfigUtils.openFileAsString(definitionPath));
     assertEquals(Type.FLINK, config.getExecution().getType());
     assertEquals(
-        Map.of(
-            "execution.checkpointing.interval", "45s",
-            "execution.checkpointing.mode", "EXACTLY_ONCE",
-            "execution.some.s3.timeout", 60),
+        Map.of("execution.checkpointing.mode", "EXACTLY_ONCE", "execution.some.s3.timeout", 60),
         config.getExecution().getProperties());
   }
 }

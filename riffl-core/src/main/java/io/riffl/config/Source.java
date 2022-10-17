@@ -2,23 +2,23 @@ package io.riffl.config;
 
 public class Source {
 
-  final String createUri;
-  final String mapUri;
+  final String create;
+  final String map;
 
   final Boolean rebalance;
 
-  public Source(String createUri, String mapUri, boolean rebalance) {
-    this.createUri = createUri;
-    this.mapUri = mapUri;
+  public Source(String create, String map, boolean rebalance) {
+    this.create = create;
+    this.map = map;
     this.rebalance = rebalance;
   }
 
-  public String getCreateUri() {
-    return createUri;
+  public String getCreate() {
+    return create;
   }
 
-  public String getMapUri() {
-    return mapUri;
+  public String getMap() {
+    return map;
   }
 
   public Boolean getRebalance() {

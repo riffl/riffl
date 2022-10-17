@@ -1,6 +1,5 @@
 package io.riffl.config;
 
-import com.typesafe.config.ConfigList;
 import com.typesafe.config.ConfigObject;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueType;
@@ -10,7 +9,6 @@ import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.stream.Collectors;
 import org.apache.commons.text.StringSubstitutor;
@@ -71,16 +69,9 @@ public class ConfigUtils {
     }
   }
 
-  public static String expandOverrides(String content, Map<String, Object> overrides) {
-    var ss = new StringSubstitutor(overrides);
+  public static String replaceSubstitutes(String content, Map<String, Object> substitutes) {
+    var ss = new StringSubstitutor(substitutes);
     return ss.replace(content);
-  }
-
-  public static String expandOverrides(String content, Properties overrides) {
-    var map =
-        overrides.entrySet().stream()
-            .collect(Collectors.toMap(k -> k.getKey().toString(), Entry::getValue));
-    return expandOverrides(content, map);
   }
 
   public static ArrayList<ArrayList<String>> parseKeys(String key, ConfigValue value) {
@@ -91,18 +82,15 @@ public class ConfigUtils {
         parseKeys(v.getKey(), v.getValue())
             .forEach(
                 part -> {
-                  part.add(key);
+                  if (key != null) {
+                    part.add(key);
+                  }
                   buffer.add(part);
                 });
       }
       return buffer;
     } else if (value.valueType() == ConfigValueType.LIST) {
-      var list = (ConfigList) value;
-      var buffer = new ArrayList<ArrayList<String>>();
-      for (var v : list) {
-        buffer.addAll(parseKeys(key, v));
-      }
-      return buffer;
+      return new ArrayList<>();
     } else {
       var buffer = new ArrayList<ArrayList<String>>();
       buffer.add(new ArrayList<>(List.of(key)));
@@ -121,7 +109,7 @@ public class ConfigUtils {
     }
   }
 
-  public static String openFileAsString(Path path, Properties overrides) {
-    return ConfigUtils.expandOverrides(openFileAsString(path), overrides);
+  public static String openFileAsString(Path path, Map<String, Object> substitutes) {
+    return ConfigUtils.replaceSubstitutes(openFileAsString(path), substitutes);
   }
 }

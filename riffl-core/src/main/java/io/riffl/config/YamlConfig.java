@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
-import com.typesafe.config.ConfigValueFactory;
 import java.util.Collections;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -13,23 +12,34 @@ import java.util.stream.Collectors;
 public class YamlConfig extends ConfigBase {
 
   private static final String STRING_DELIMITER = "\"";
-  private final Config config;
+
+  private final String contentYaml;
 
   public YamlConfig(String contentYaml) {
-
-    var overrides = parseOverrides(contentYaml);
-    var parsedConfig = parse(ConfigUtils.expandOverrides(contentYaml, overrides));
-
-    for (var override : overrides.entrySet()) {
-      parsedConfig =
-          parsedConfig.withValue(
-              override.getKey(), ConfigValueFactory.fromAnyRef(override.getValue()));
-    }
-    this.config = parsedConfig;
+    this.contentYaml = contentYaml;
   }
 
   protected Config getConfig() {
-    return config;
+    return parse(ConfigUtils.replaceSubstitutes(contentYaml, getConfigAsMap()));
+  }
+
+  @Override
+  protected Map<String, Object> getConfigAsMap() {
+    var config = parse(contentYaml);
+    return ConfigUtils.parseKeys(null, config.root()).stream()
+        .map(
+            key -> {
+              Collections.reverse(key);
+              var quoted =
+                  key.stream()
+                      .map(keyPart -> STRING_DELIMITER + keyPart + STRING_DELIMITER)
+                      .collect(Collectors.toList());
+              return String.join(CONFIG_DELIMITER, quoted);
+            })
+        .distinct()
+        .collect(
+            Collectors.toMap(
+                k -> k.replace(STRING_DELIMITER, ""), k -> config.getValue(k).unwrapped()));
   }
 
   private Config parse(String contentYaml) {
@@ -40,30 +50,6 @@ public class YamlConfig extends ConfigBase {
       return ConfigFactory.parseString(hocon);
     } catch (JsonProcessingException e) {
       throw new RuntimeException(e);
-    }
-  }
-
-  private Map<String, Object> parseOverrides(String contentYaml) {
-    var parsedConfig = parse(contentYaml);
-    if (parsedConfig.hasPath(CONFIG_OVERRIDES)) {
-      return ConfigUtils.parseKeys(
-              CONFIG_OVERRIDES, parsedConfig.getConfig(CONFIG_OVERRIDES).root())
-          .stream()
-          .map(
-              key -> {
-                Collections.reverse(key);
-                var quoted =
-                    key.stream()
-                        .map(keyPart -> STRING_DELIMITER + keyPart + STRING_DELIMITER)
-                        .collect(Collectors.toList());
-                return String.join(CONFIG_DELIMITER, quoted);
-              })
-          .distinct()
-          .collect(
-              Collectors.toMap(
-                  k -> k.replace(STRING_DELIMITER, ""), k -> parsedConfig.getValue(k).unwrapped()));
-    } else {
-      return Map.of();
     }
   }
 }

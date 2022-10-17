@@ -1,16 +1,16 @@
 package io.riffl.config;
 
 import com.typesafe.config.Config;
-import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.stream.Collectors;
+import org.apache.flink.core.fs.Path;
 
 abstract class ConfigBase {
 
   private static final String CONFIG_NAME = "name";
   private static final String CONFIG_CATALOGS = "catalogs";
-
   private static final String CONFIG_DATABASES = "databases";
   private static final String CONFIG_SOURCES = "sources";
   private static final String CONFIG_SOURCE_REBALANCE = "rebalance";
@@ -19,7 +19,6 @@ abstract class ConfigBase {
   private static final String CONFIG_MAP_URI = "mapUri";
   private static final String CONFIG_QUERY_URI = "queryUri";
   private static final String CONFIG_SINK_DISTRIBUTION = "distribution";
-  protected static final String CONFIG_OVERRIDES = "overrides";
   protected static final String CONFIG_DELIMITER = ".";
   private static final String CONFIG_SINK_REPARTITION_CLASS_NAME =
       CONFIG_SINK_DISTRIBUTION + CONFIG_DELIMITER + "className";
@@ -36,32 +35,20 @@ abstract class ConfigBase {
 
   abstract Config getConfig();
 
+  abstract Map<String, Object> getConfigAsMap();
+
   public String getName() {
     return getConfig().getString(CONFIG_NAME);
-  }
-
-  public Properties getOverrides() {
-    var properties = new Properties();
-    if (getConfig().hasPath(CONFIG_OVERRIDES)) {
-      properties.putAll(
-          ConfigUtils.parseKeys(CONFIG_OVERRIDES, getConfig().getConfig(CONFIG_OVERRIDES).root())
-              .stream()
-              .map(
-                  key -> {
-                    Collections.reverse(key);
-                    return String.join(CONFIG_DELIMITER, key);
-                  })
-              .distinct()
-              .collect(Collectors.toMap(k -> k, k -> getConfig().getValue(k).unwrapped())));
-    }
-    return properties;
   }
 
   public List<Catalog> getCatalogs() {
     Config config = getConfig();
     return config.hasPath(CONFIG_CATALOGS)
         ? config.getConfigList(CONFIG_CATALOGS).stream()
-            .map(catalog -> new Catalog(catalog.getString(CONFIG_CREATE_URI)))
+            .map(
+                catalog ->
+                    new Catalog(
+                        loadResource(catalog.getString(CONFIG_CREATE_URI), getConfigAsMap())))
             .collect(Collectors.toList())
         : List.of();
   }
@@ -78,7 +65,10 @@ abstract class ConfigBase {
     Config config = getConfig();
     return config.hasPath(CONFIG_DATABASES)
         ? config.getConfigList(CONFIG_DATABASES).stream()
-            .map(catalog -> new Database(catalog.getString(CONFIG_CREATE_URI)))
+            .map(
+                catalog ->
+                    new Database(
+                        loadResource(catalog.getString(CONFIG_CREATE_URI), getConfigAsMap())))
             .collect(Collectors.toList())
         : List.of();
   }
@@ -89,8 +79,10 @@ abstract class ConfigBase {
         .map(
             source ->
                 new Source(
-                    source.getString(CONFIG_CREATE_URI),
-                    source.hasPath(CONFIG_MAP_URI) ? source.getString(CONFIG_MAP_URI) : null,
+                    loadResource(source.getString(CONFIG_CREATE_URI), getConfigAsMap()),
+                    source.hasPath(CONFIG_MAP_URI)
+                        ? loadResource(source.getString(CONFIG_MAP_URI), getConfigAsMap())
+                        : null,
                     source.hasPath(CONFIG_SOURCE_REBALANCE)
                         && source.getBoolean(CONFIG_SOURCE_REBALANCE)))
         .collect(Collectors.toList());
@@ -110,8 +102,10 @@ abstract class ConfigBase {
                     .forEach(c -> properties.put(c.getKey(), c.getValue().unwrapped()));
               }
               return new Sink(
-                  sink.getString(CONFIG_CREATE_URI),
-                  sink.hasPath(CONFIG_QUERY_URI) ? sink.getString(CONFIG_QUERY_URI) : null,
+                  loadResource(sink.getString(CONFIG_CREATE_URI), getConfigAsMap()),
+                  sink.hasPath(CONFIG_QUERY_URI)
+                      ? loadResource(sink.getString(CONFIG_QUERY_URI), getConfigAsMap())
+                      : null,
                   sink.hasPath(CONFIG_SINK_DISTRIBUTION)
                       ? new Distribution(
                           sink.getString(CONFIG_SINK_REPARTITION_CLASS_NAME),
@@ -122,5 +116,9 @@ abstract class ConfigBase {
                       : null);
             })
         .collect(Collectors.toList());
+  }
+
+  private String loadResource(String uri, Map<String, Object> substitutes) {
+    return ConfigUtils.openFileAsString(new Path(uri), substitutes);
   }
 }
