@@ -1,6 +1,5 @@
 package io.riffl.sink;
 
-import io.riffl.config.ConfigUtils;
 import io.riffl.config.Sink;
 import io.riffl.sink.allocation.StackedTaskAllocation;
 import io.riffl.sink.allocation.TaskAllocation;
@@ -10,14 +9,12 @@ import io.riffl.utils.TableHelper;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Properties;
 import java.util.stream.Collectors;
 import org.apache.flink.api.common.functions.Partitioner;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.core.fs.Path;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.Table;
@@ -53,7 +50,7 @@ public class SinkStream {
         .returns(stream.getType());
   }
 
-  public StreamStatementSet build(List<Sink> sinks, Properties overrides) {
+  public StreamStatementSet build(List<Sink> sinks) {
     Map<String, TaskAssigner> taskAssigners = createTaskAssigners(sinks);
 
     TaskAllocation taskAllocation = new StackedTaskAllocation(sinks, env.getParallelism());
@@ -62,9 +59,7 @@ public class SinkStream {
         sinks.stream()
             .map(
                 sink -> {
-                  Table query =
-                      tableEnv.sqlQuery(
-                          ConfigUtils.openFileAsString(new Path(sink.getQueryUri()), overrides));
+                  Table query = tableEnv.sqlQuery(sink.getQuery());
 
                   if (sink.hasDistribution()) {
                     TaskAssigner taskAssigner =
@@ -82,11 +77,10 @@ public class SinkStream {
     StreamStatementSet set = tableEnv.createStatementSet();
     queryStream.forEach(
         (key, value) -> {
-          Path definitionPath = new Path(key.getCreateUri());
-          tableEnv.executeSql(ConfigUtils.openFileAsString(definitionPath, overrides));
+          tableEnv.executeSql(key.getCreate());
 
           ObjectIdentifier sinkId =
-              TableHelper.getCreateTableIdentifier(definitionPath, env, tableEnv);
+              TableHelper.getCreateTableIdentifier(key.getCreate(), env, tableEnv);
 
           logger.info(sinkId.asSummaryString());
 

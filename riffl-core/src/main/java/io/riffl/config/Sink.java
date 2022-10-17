@@ -4,22 +4,22 @@ import java.io.Serializable;
 import java.util.Objects;
 
 public class Sink implements Serializable {
-  final String createUri;
-  final String queryUri;
+  final String create;
+  final String query;
   final Distribution distribution;
 
-  public Sink(String createUri, String queryUri, Distribution distribution) {
-    this.createUri = createUri;
-    this.queryUri = queryUri;
+  public Sink(String create, String query, Distribution distribution) {
+    this.create = create;
+    this.query = query;
     this.distribution = distribution;
   }
 
-  public String getCreateUri() {
-    return createUri;
+  public String getCreate() {
+    return create;
   }
 
-  public String getQueryUri() {
-    return queryUri;
+  public String getQuery() {
+    return query;
   }
 
   public Distribution getDistribution() {
@@ -39,13 +39,13 @@ public class Sink implements Serializable {
       return false;
     }
     Sink sink = (Sink) o;
-    return createUri.equals(sink.createUri)
-        && Objects.equals(queryUri, sink.queryUri)
+    return create.equals(sink.create)
+        && Objects.equals(query, sink.query)
         && Objects.equals(distribution, sink.distribution);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(createUri, queryUri, distribution);
+    return Objects.hash(create, query, distribution);
   }
 }

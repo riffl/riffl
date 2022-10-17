@@ -1,8 +1,6 @@
 package io.riffl.utils;
 
 import io.riffl.Riffl;
-import io.riffl.config.ConfigUtils;
-import org.apache.flink.core.fs.Path;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.EnvironmentSettings;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
@@ -16,13 +14,13 @@ import org.apache.flink.table.planner.delegation.DefaultExecutor;
 import org.apache.flink.table.planner.delegation.StreamPlanner;
 
 public class TableHelper {
+
   public static ObjectIdentifier getCreateTableIdentifier(
-      Path path, StreamExecutionEnvironment env, StreamTableEnvironment tableEnv) {
+      String stmt, StreamExecutionEnvironment env, StreamTableEnvironment tableEnv) {
 
     StreamPlanner planner = getStreamPlanner(env, tableEnv);
 
-    CreateTableOperation operation =
-        (CreateTableOperation) planner.getParser().parse(ConfigUtils.openFileAsString(path)).get(0);
+    CreateTableOperation operation = (CreateTableOperation) planner.getParser().parse(stmt).get(0);
 
     return operation.getTableIdentifier();
   }

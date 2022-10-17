@@ -2,13 +2,13 @@ package io.riffl.config;
 
 public class Catalog {
 
-  final String createUri;
+  final String create;
 
-  public Catalog(String createUri) {
-    this.createUri = createUri;
+  public Catalog(String create) {
+    this.create = create;
   }
 
-  public String getCreateUri() {
-    return createUri;
+  public String getCreate() {
+    return create;
   }
 }
