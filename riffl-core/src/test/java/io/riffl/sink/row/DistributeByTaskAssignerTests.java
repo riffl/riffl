@@ -73,6 +73,7 @@ public class DistributeByTaskAssignerTests {
         new Sink(
             "",
             "",
+            "",
             new Distribution(
                 DistributeByTaskAssigner.class.getCanonicalName(), properties, tasks.size()));
 

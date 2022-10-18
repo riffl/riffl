@@ -1,6 +1,7 @@
 package io.riffl.config;
 
 import com.typesafe.config.Config;
+import java.text.MessageFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -16,6 +17,7 @@ abstract class ConfigBase {
   private static final String CONFIG_SOURCE_REBALANCE = "rebalance";
   private static final String CONFIG_SINKS = "sinks";
   private static final String CONFIG_CREATE_URI = "createUri";
+  private static final String CONFIG_TABLE_IDENTIFIER = "tableIdentifier";
   private static final String CONFIG_MAP_URI = "mapUri";
   private static final String CONFIG_QUERY_URI = "queryUri";
   private static final String CONFIG_SINK_DISTRIBUTION = "distribution";
@@ -101,8 +103,27 @@ abstract class ConfigBase {
                     .entrySet()
                     .forEach(c -> properties.put(c.getKey(), c.getValue().unwrapped()));
               }
+              String create = null;
+              String tableIdentifier = null;
+              if (sink.hasPath(CONFIG_CREATE_URI) && sink.hasPath(CONFIG_TABLE_IDENTIFIER)) {
+                throw new RuntimeException(
+                    MessageFormat.format(
+                        "Either {0} or {1} can be set",
+                        sink.hasPath(CONFIG_CREATE_URI), sink.hasPath(CONFIG_TABLE_IDENTIFIER)));
+              } else if (sink.hasPath(CONFIG_CREATE_URI)) {
+                create = loadResource(sink.getString(CONFIG_CREATE_URI), getConfigAsMap());
+              } else if (sink.hasPath(CONFIG_TABLE_IDENTIFIER)) {
+                tableIdentifier = sink.getString(CONFIG_TABLE_IDENTIFIER);
+              } else {
+                throw new RuntimeException(
+                    MessageFormat.format(
+                        "Either {0} or {1} must be set",
+                        sink.hasPath(CONFIG_CREATE_URI), sink.hasPath(CONFIG_TABLE_IDENTIFIER)));
+              }
+
               return new Sink(
-                  loadResource(sink.getString(CONFIG_CREATE_URI), getConfigAsMap()),
+                  create,
+                  tableIdentifier,
                   sink.hasPath(CONFIG_QUERY_URI)
                       ? loadResource(sink.getString(CONFIG_QUERY_URI), getConfigAsMap())
                       : null,

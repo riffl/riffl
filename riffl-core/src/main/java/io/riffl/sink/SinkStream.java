@@ -20,7 +20,6 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.bridge.java.StreamStatementSet;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
-import org.apache.flink.table.catalog.ObjectIdentifier;
 import org.apache.flink.types.Row;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,7 +50,7 @@ public class SinkStream {
   }
 
   public StreamStatementSet build(List<Sink> sinks) {
-    Map<String, TaskAssigner> taskAssigners = createTaskAssigners(sinks);
+    Map<String, TaskAssigner> taskAssigners = loadTaskAssigners(sinks);
 
     TaskAllocation taskAllocation = new StackedTaskAllocation(sinks, env.getParallelism());
     // Query
@@ -77,20 +76,27 @@ public class SinkStream {
     StreamStatementSet set = tableEnv.createStatementSet();
     queryStream.forEach(
         (key, value) -> {
-          tableEnv.executeSql(key.getCreate());
-
-          ObjectIdentifier sinkId =
-              TableHelper.getCreateTableIdentifier(key.getCreate(), env, tableEnv);
-
-          logger.info(sinkId.asSummaryString());
-
-          set.addInsert(sinkId.asSummaryString(), tableEnv.fromDataStream(value));
+          String tableIdentifier = getTableIdentifier(key);
+          logger.info(tableIdentifier);
+          set.addInsert(tableIdentifier, tableEnv.fromDataStream(value));
         });
 
     return set;
   }
 
-  private Map<String, TaskAssigner> createTaskAssigners(List<Sink> sinks) {
+  String getTableIdentifier(Sink key) {
+    String sinkId = null;
+    if (key.hasCreate()) {
+      tableEnv.executeSql(key.getCreate());
+      sinkId =
+          TableHelper.getCreateTableIdentifier(key.getCreate(), env, tableEnv).asSummaryString();
+    } else if (key.hasInsertIntoTable()) {
+      sinkId = key.getTableIdentifier();
+    }
+    return sinkId;
+  }
+
+  private Map<String, TaskAssigner> loadTaskAssigners(List<Sink> sinks) {
     return sinks.stream()
         .filter(s -> s.getDistribution() != null)
         .map(s -> s.getDistribution().getClassName())
