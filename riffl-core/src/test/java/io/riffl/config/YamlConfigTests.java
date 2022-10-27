@@ -7,18 +7,27 @@ import io.riffl.config.Execution.Type;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.flink.core.fs.Path;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import org.junit.jupiter.api.Test;
 
 public class YamlConfigTests {
+
+  Parser parser =
+      new FlinkParser(
+          StreamExecutionEnvironment.getExecutionEnvironment(),
+          StreamTableEnvironment.create(StreamExecutionEnvironment.getExecutionEnvironment()));
 
   @Test
   void yamlConfigShouldBeLoaded() {
     assertNotNull(
         new YamlConfig(
+                parser,
                 ConfigUtils.openFileAsString(new Path("src/test/resources/testApplication.yaml")))
             .getConfig());
     assertNotNull(
         new YamlConfig(
+                parser,
                 ConfigUtils.openFileAsString(
                     new Path("src/test/resources/testApplicationNoOverrides.yaml")))
             .getConfig());
@@ -27,7 +36,7 @@ public class YamlConfigTests {
   @Test
   void yamlConfigPlaceholdersShouldBeExpanded() {
     Path definitionPath = new Path("src/test/resources/testApplication.yaml");
-    var config = new YamlConfig(ConfigUtils.openFileAsString(definitionPath));
+    var config = new YamlConfig(parser, ConfigUtils.openFileAsString(definitionPath));
     assertEquals(
         "WITH ('path'='${overrides.bucket}${overrides.path}')", config.getCatalogs().get(0).create);
   }
@@ -35,7 +44,7 @@ public class YamlConfigTests {
   @Test
   void yamlConfigOverridesShouldBeReturnedAsMap() {
     Path definitionPath = new Path("src/test/resources/testApplication.yaml");
-    var config = new YamlConfig(ConfigUtils.openFileAsString(definitionPath));
+    var config = new YamlConfig(parser, ConfigUtils.openFileAsString(definitionPath));
     assertEquals(
         Map.of(
             "name", "Riffl application",
@@ -63,7 +72,7 @@ public class YamlConfigTests {
   @Test
   void executionShouldBeLoaded() {
     Path definitionPath = new Path("src/test/resources/testApplication.yaml");
-    var config = new YamlConfig(ConfigUtils.openFileAsString(definitionPath));
+    var config = new YamlConfig(parser, ConfigUtils.openFileAsString(definitionPath));
     assertEquals(Type.FLINK, config.getExecution().getType());
     assertEquals(
         Map.of("execution.checkpointing.mode", "EXACTLY_ONCE", "execution.some.s3.timeout", 60),

@@ -1,39 +1,83 @@
-name: Riffl application
-overrides:
-  ddl.path: ""
-  sink-1.path: "file:///tmp/riffl-sink-1"
-  sink-2.path: "file:///tmp/riffl-sink-2"
+name: Riffl example application
+properties:
+  catalog.name: "custom_catalog"
+  sink.path: "file:///tmp/riffl-sink/"
 execution:
   type: FLINK
   configuration:
     execution.checkpointing.interval: 45s
     execution.checkpointing.mode: EXACTLY_ONCE
 catalogs:
-  - createUri: ${overrides.ddl.path}example/catalog.ddl
+  - create: " 
+      CREATE CATALOG ${properties.catalog.name} WITH (
+        'type'='generic_in_memory'
+      )"
 databases:
-  - createUri: example/database.ddl
+  - create: " 
+      CREATE DATABASE IF NOT EXISTS ${properties.catalog.name}.riffl"
 sources:
-  - createUri: example/source-1.ddl
-    mapUri: example/source-1-map.ddl
-    rebalance: false
-  - createUri: example/source-2.ddl
-    mapUri: example/source-2-map.ddl
-    rebalance: false
+  - create: " 
+      CREATE TABLE IF NOT EXISTS source_product (
+          product_id INT,
+          product_type INT,
+          product_name STRING,
+          product_desc STRING
+      ) WITH (
+          'connector' = 'datagen',
+          'rows-per-second' = '10',
+          'fields.product_type.kind'='random',
+          'fields.product_type.min'='1',
+          'fields.product_type.max'='5'
+      )"
+    map: "    
+        SELECT
+            product_id,
+            product_type,
+            product_name,
+            product_desc,
+            CURRENT_TIMESTAMP as ts
+        FROM source_product
+        WHERE (product_type = 1 AND RAND_INTEGER(0,100) BETWEEN 0 AND 100)
+           OR (product_type = 2 AND RAND_INTEGER(0,100) BETWEEN 0 AND 60)
+           OR (product_type > 2 AND RAND_INTEGER(0,100) BETWEEN 0 AND 30)"
 sinks:
-  - createUri: example/sink-1.ddl
-    queryUri: example/sink-1-query.ddl
-    distribution:
-      className: "io.riffl.sink.row.KeyByTaskAssigner"
-      parallelism: 5
-      properties:
-        keys:
-          - "someField_2"
-        keyParallelism: 2
-  - createUri: example/sink-2.ddl
-    queryUri: example/sink-2-query.ddl
+#  - create: "
+#      CREATE TABLE IF NOT EXISTS sink_default (
+#          product_id INT,
+#          product_type INT,
+#          product_name STRING,
+#          product_desc STRING,
+#          dt STRING,
+#          hr STRING
+#      ) PARTITIONED BY (dt, hr)
+#      WITH (
+#        'connector'='filesystem',
+#        'format'='parquet',
+#        'path'='${properties.sink.path}'
+#      )"
+  - create: "
+    CREATE TABLE IF NOT EXISTS sink_default (
+        product_id INT,
+        product_type INT,
+        product_name STRING,
+        product_desc STRING,
+        dt STRING,
+        hr STRING
+    )
+    WITH (
+      'connector' = 'print'
+    )"
+    query: "
+      SELECT 
+        product_id,
+        product_type,
+        product_name,
+        product_desc,
+        CAST(DATE_FORMAT(CURRENT_TIMESTAMP, 'yyyy-MM-dd') AS STRING) AS dt, 
+        CAST(DATE_FORMAT(CURRENT_TIMESTAMP, 'HH') AS STRING) AS hr FROM source_product"
+    parallelism: 5
     distribution:
       className: "io.riffl.sink.row.DistributeByTaskAssigner"
-      parallelism: 5
       properties:
         keys:
-          - "someField_2"
+          - "product_type"

@@ -1,6 +1,7 @@
 package io.riffl;
 
 import io.riffl.config.ConfigUtils;
+import io.riffl.config.FlinkParser;
 import io.riffl.config.YamlConfig;
 import io.riffl.sink.SinkStream;
 import io.riffl.source.SourceStream;
@@ -23,7 +24,13 @@ public class Launcher {
 
     String application = ParameterTool.fromArgs(args).getRequired("application");
 
-    YamlConfig appConfig = new YamlConfig(ConfigUtils.openFileAsString(new Path(application)));
+    var parser =
+        new FlinkParser(
+            StreamExecutionEnvironment.getExecutionEnvironment(),
+            StreamTableEnvironment.create(StreamExecutionEnvironment.getExecutionEnvironment()));
+
+    YamlConfig appConfig =
+        new YamlConfig(parser, ConfigUtils.openFileAsString(new Path(application)));
     var executionConfig =
         appConfig.getExecution().getProperties().entrySet().stream()
             .collect(Collectors.toMap(e -> e.getKey().toString(), e -> e.getValue().toString()));

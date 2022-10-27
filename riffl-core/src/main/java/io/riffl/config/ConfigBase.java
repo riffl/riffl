@@ -6,34 +6,40 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.stream.Collectors;
-import org.apache.flink.core.fs.Path;
 
 abstract class ConfigBase {
 
-  private static final String CONFIG_NAME = "name";
-  private static final String CONFIG_CATALOGS = "catalogs";
-  private static final String CONFIG_DATABASES = "databases";
-  private static final String CONFIG_SOURCES = "sources";
-  private static final String CONFIG_SOURCE_REBALANCE = "rebalance";
-  private static final String CONFIG_SINKS = "sinks";
-  private static final String CONFIG_CREATE_URI = "createUri";
-  private static final String CONFIG_TABLE_IDENTIFIER = "tableIdentifier";
-  private static final String CONFIG_MAP_URI = "mapUri";
-  private static final String CONFIG_QUERY_URI = "queryUri";
-  private static final String CONFIG_SINK_DISTRIBUTION = "distribution";
+  private final Parser parser;
+  static final String CONFIG_CATALOGS = "catalogs";
+  static final String CONFIG_DATABASES = "databases";
+  static final String CONFIG_SOURCES = "sources";
+  static final String CONFIG_SINKS = "sinks";
+  static final String CONFIG_NAME = "name";
+  static final String CONFIG_SOURCE_REBALANCE = "rebalance";
+  static final String CONFIG_PARALLELISM = "parallelism";
+  static final String CONFIG_CREATE_URI = "createUri";
+  static final String CONFIG_CREATE = "create";
+  static final String CONFIG_TABLE = "table";
+  static final String CONFIG_MAP_URI = "mapUri";
+  static final String CONFIG_MAP = "map";
+  static final String CONFIG_QUERY_URI = "queryUri";
+  static final String CONFIG_QUERY = "query";
+  static final String CONFIG_SINK_DISTRIBUTION = "distribution";
   protected static final String CONFIG_DELIMITER = ".";
-  private static final String CONFIG_SINK_REPARTITION_CLASS_NAME =
+  static final String CONFIG_SINK_DISTRIBUTION_CLASS_NAME =
       CONFIG_SINK_DISTRIBUTION + CONFIG_DELIMITER + "className";
-  private static final String CONFIG_SINK_REPARTITION_PROPERTIES =
+  static final String CONFIG_SINK_DISTRIBUTION_PROPERTIES =
       CONFIG_SINK_DISTRIBUTION + CONFIG_DELIMITER + "properties";
-  private static final String CONFIG_SINK_REPARTITION_PARALLELISM =
-      CONFIG_SINK_DISTRIBUTION + CONFIG_DELIMITER + "parallelism";
 
-  private static final String CONFIG_EXECUTION = "execution";
+  static final String CONFIG_EXECUTION = "execution";
 
-  private static final String CONFIG_EXECUTION_CONFIGURATION =
+  static final String CONFIG_EXECUTION_CONFIGURATION =
       CONFIG_EXECUTION + CONFIG_DELIMITER + "configuration";
-  private static final String CONFIG_EXECUTION_TYPE = CONFIG_EXECUTION + CONFIG_DELIMITER + "type";
+  static final String CONFIG_EXECUTION_TYPE = CONFIG_EXECUTION + CONFIG_DELIMITER + "type";
+
+  protected ConfigBase(Parser parser) {
+    this.parser = parser;
+  }
 
   abstract Config getConfig();
 
@@ -49,8 +55,7 @@ abstract class ConfigBase {
         ? config.getConfigList(CONFIG_CATALOGS).stream()
             .map(
                 catalog ->
-                    new Catalog(
-                        loadResource(catalog.getString(CONFIG_CREATE_URI), getConfigAsMap())))
+                    new Catalog(loadResourceOrStmt(catalog, CONFIG_CREATE_URI, CONFIG_CREATE)))
             .collect(Collectors.toList())
         : List.of();
   }
@@ -68,9 +73,8 @@ abstract class ConfigBase {
     return config.hasPath(CONFIG_DATABASES)
         ? config.getConfigList(CONFIG_DATABASES).stream()
             .map(
-                catalog ->
-                    new Database(
-                        loadResource(catalog.getString(CONFIG_CREATE_URI), getConfigAsMap())))
+                database ->
+                    new Database(loadResourceOrStmt(database, CONFIG_CREATE_URI, CONFIG_CREATE)))
             .collect(Collectors.toList())
         : List.of();
   }
@@ -81,9 +85,9 @@ abstract class ConfigBase {
         .map(
             source ->
                 new Source(
-                    loadResource(source.getString(CONFIG_CREATE_URI), getConfigAsMap()),
-                    source.hasPath(CONFIG_MAP_URI)
-                        ? loadResource(source.getString(CONFIG_MAP_URI), getConfigAsMap())
+                    loadResourceOrStmt(source, CONFIG_CREATE_URI, CONFIG_CREATE),
+                    source.hasPath(CONFIG_MAP_URI) || source.hasPath(CONFIG_MAP)
+                        ? loadResourceOrStmt(source, CONFIG_MAP_URI, CONFIG_MAP)
                         : null,
                     source.hasPath(CONFIG_SOURCE_REBALANCE)
                         && source.getBoolean(CONFIG_SOURCE_REBALANCE)))
@@ -93,53 +97,78 @@ abstract class ConfigBase {
   public List<Sink> getSinks() {
     Config config = getConfig();
 
-    return config.getConfigList(CONFIG_SINKS).stream()
-        .map(
-            sink -> {
-              Properties properties = new Properties();
-              if (sink.hasPath(CONFIG_SINK_DISTRIBUTION)
-                  && sink.hasPath(CONFIG_SINK_REPARTITION_PROPERTIES)) {
-                sink.getConfig(CONFIG_SINK_REPARTITION_PROPERTIES)
-                    .entrySet()
-                    .forEach(c -> properties.put(c.getKey(), c.getValue().unwrapped()));
-              }
-              String create = null;
-              String tableIdentifier = null;
-              if (sink.hasPath(CONFIG_CREATE_URI) && sink.hasPath(CONFIG_TABLE_IDENTIFIER)) {
-                throw new RuntimeException(
-                    MessageFormat.format(
-                        "Either {0} or {1} can be set",
-                        sink.hasPath(CONFIG_CREATE_URI), sink.hasPath(CONFIG_TABLE_IDENTIFIER)));
-              } else if (sink.hasPath(CONFIG_CREATE_URI)) {
-                create = loadResource(sink.getString(CONFIG_CREATE_URI), getConfigAsMap());
-              } else if (sink.hasPath(CONFIG_TABLE_IDENTIFIER)) {
-                tableIdentifier = sink.getString(CONFIG_TABLE_IDENTIFIER);
-              } else {
-                throw new RuntimeException(
-                    MessageFormat.format(
-                        "Either {0} or {1} must be set",
-                        sink.hasPath(CONFIG_CREATE_URI), sink.hasPath(CONFIG_TABLE_IDENTIFIER)));
-              }
+    var sinks =
+        config.getConfigList(CONFIG_SINKS).stream()
+            .map(
+                sink -> {
+                  Properties properties = new Properties();
+                  if (sink.hasPath(CONFIG_SINK_DISTRIBUTION)
+                      && sink.hasPath(CONFIG_SINK_DISTRIBUTION_PROPERTIES)) {
+                    sink.getConfig(CONFIG_SINK_DISTRIBUTION_PROPERTIES)
+                        .entrySet()
+                        .forEach(c -> properties.put(c.getKey(), c.getValue().unwrapped()));
+                  }
+                  String create = null;
+                  if (sink.hasPath(CONFIG_CREATE_URI) || sink.hasPath(CONFIG_CREATE)) {
+                    create = loadResourceOrStmt(sink, CONFIG_CREATE_URI, CONFIG_CREATE);
+                  }
 
-              return new Sink(
-                  create,
-                  tableIdentifier,
-                  sink.hasPath(CONFIG_QUERY_URI)
-                      ? loadResource(sink.getString(CONFIG_QUERY_URI), getConfigAsMap())
-                      : null,
-                  sink.hasPath(CONFIG_SINK_DISTRIBUTION)
-                      ? new Distribution(
-                          sink.getString(CONFIG_SINK_REPARTITION_CLASS_NAME),
-                          properties,
-                          sink.hasPath(CONFIG_SINK_REPARTITION_PARALLELISM)
-                              ? sink.getInt(CONFIG_SINK_REPARTITION_PARALLELISM)
-                              : null)
-                      : null);
-            })
-        .collect(Collectors.toList());
+                  String table;
+                  if (create != null && sink.hasPath(CONFIG_TABLE)) {
+                    throw new RuntimeException(
+                        MessageFormat.format(
+                            "Either {0}/{1} or {2} can be set",
+                            CONFIG_CREATE_URI, CONFIG_CREATE, CONFIG_TABLE));
+                  } else if (create != null) {
+                    table = parser.getIdentifier(create);
+                  } else if (sink.hasPath(CONFIG_TABLE)) {
+                    table = sink.getString(CONFIG_TABLE);
+                  } else {
+                    throw new RuntimeException(
+                        MessageFormat.format(
+                            "Either {0}/{1} or {2} must be set",
+                            CONFIG_CREATE_URI, CONFIG_CREATE, CONFIG_TABLE));
+                  }
+
+                  String query;
+                  if (sink.hasPath(CONFIG_QUERY_URI) || sink.hasPath(CONFIG_QUERY)) {
+                    query = loadResourceOrStmt(sink, CONFIG_QUERY_URI, CONFIG_QUERY);
+                  } else {
+                    throw new RuntimeException(
+                        MessageFormat.format(
+                            "Either {0} or {1} must be set", CONFIG_QUERY_URI, CONFIG_QUERY));
+                  }
+
+                  return new Sink(
+                      create,
+                      table,
+                      query,
+                      sink.hasPath(CONFIG_SINK_DISTRIBUTION)
+                          ? new Distribution(
+                              sink.getString(CONFIG_SINK_DISTRIBUTION_CLASS_NAME), properties)
+                          : null,
+                      sink.hasPath(CONFIG_PARALLELISM) ? sink.getInt(CONFIG_PARALLELISM) : null);
+                })
+            .collect(Collectors.toList());
+
+    if (sinks.stream().map(Sink::getTable).distinct().count() != sinks.size()) {
+      throw new RuntimeException("Sink output tables must be unique");
+    }
+
+    return sinks;
   }
 
   private String loadResource(String uri, Map<String, Object> substitutes) {
-    return ConfigUtils.openFileAsString(new Path(uri), substitutes);
+    return ConfigUtils.openFileAsString(uri, substitutes);
+  }
+
+  private String loadResourceOrStmt(Config config, String configUri, String configStmt) {
+    String resource;
+    if (config.hasPath(configUri)) {
+      resource = loadResource(config.getString(configUri), getConfigAsMap());
+    } else {
+      resource = config.getString(configStmt);
+    }
+    return resource;
   }
 }

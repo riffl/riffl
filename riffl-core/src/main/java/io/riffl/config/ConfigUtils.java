@@ -112,4 +112,8 @@ public class ConfigUtils {
   public static String openFileAsString(Path path, Map<String, Object> substitutes) {
     return ConfigUtils.replaceSubstitutes(openFileAsString(path), substitutes);
   }
+
+  public static String openFileAsString(String path, Map<String, Object> substitutes) {
+    return ConfigUtils.replaceSubstitutes(openFileAsString(new Path(path)), substitutes);
+  }
 }
