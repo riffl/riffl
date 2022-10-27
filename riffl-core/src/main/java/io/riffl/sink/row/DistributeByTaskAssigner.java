@@ -121,7 +121,7 @@ public class DistributeByTaskAssigner implements TaskAssigner, CheckpointedFunct
             keyTaskAssignment.put(item.getKey(), tasks.subList(previousTask, currentTask));
           } else {
             // distribute light keys over remaining tasks
-            var position = item.getKey().hashCode() % (tasks.size() - currentTask);
+            var position = Math.floorMod(item.getKey().hashCode(), (tasks.size() - currentTask));
             keyTaskAssignment.put(
                 item.getKey(), Collections.singletonList(tasks.get((tasks.size() - 1) - position)));
           }

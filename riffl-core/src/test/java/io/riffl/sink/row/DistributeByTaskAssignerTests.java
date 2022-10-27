@@ -130,6 +130,26 @@ public class DistributeByTaskAssignerTests {
   }
 
   @Test
+  void tasksAssignedWithNegativeHashCode() throws Exception {
+    List<Integer> tasks = IntStream.rangeClosed(0, 4).boxed().collect(Collectors.toList());
+    var taskAssigner = getTaskAssigner(tasks, properties, metrics, taskAssignment);
+
+    IntStream.rangeClosed(-98, -93)
+        .forEach(
+            r -> {
+              metrics.add(List.of(r), (long) 1);
+            });
+
+    ((CheckpointedFunction) taskAssigner).snapshotState(context);
+    assertEquals(taskAssignment.get(List.of(-98)), List.of(1));
+    assertEquals(taskAssignment.get(List.of(-97)), List.of(0));
+    assertEquals(taskAssignment.get(List.of(-96)), List.of(4));
+    assertEquals(taskAssignment.get(List.of(-95)), List.of(3));
+    assertEquals(taskAssignment.get(List.of(-94)), List.of(2));
+    assertEquals(taskAssignment.get(List.of(-93)), List.of(1));
+  }
+
+  @Test
   void tasksAssignedForSingleEntry() throws Exception {
     List<Integer> tasks = IntStream.rangeClosed(0, 15).boxed().collect(Collectors.toList());
     var taskAssigner = getTaskAssigner(tasks, properties, metrics, taskAssignment);
