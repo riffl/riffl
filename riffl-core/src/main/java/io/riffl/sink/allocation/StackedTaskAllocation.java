@@ -19,29 +19,30 @@ public class StackedTaskAllocation extends TaskAllocation {
 
   private static final Logger logger = LoggerFactory.getLogger(StackedTaskAllocation.class);
 
-  private Map<Sink, List<Integer>> state = new HashMap<>();
+  private Map<String, List<Integer>> state = new HashMap<>();
 
   public StackedTaskAllocation(List<Sink> sinks, int parallelism) {
     super(sinks, parallelism);
   }
 
   public List<Integer> getSinkTasks(Sink sink) {
-    return state.get(sink);
+    return state.get(sink.getTable());
   }
 
   public void configure() {
     List<Integer> tasks = IntStream.range(0, getParallelism()).boxed().collect(Collectors.toList());
-    Collections.shuffle(tasks, new Random(getSinks().hashCode()));
+    var tables = getSinks().stream().map(Sink::getTable).collect(Collectors.toList());
+    Collections.shuffle(tasks, new Random(tables.hashCode()));
     List<Iterator<Integer>> taskIterator = new ArrayList<>(List.of(tasks.iterator()));
-    logger.info("Tasks {}, hashCode {}", tasks, getSinks().get(0).hashCode());
+    logger.info("Tasks {}, hashCode {}", tasks, tables.hashCode());
     this.state =
         getSinks().stream()
             .map(
-                s -> {
-                  if (s.hasDistribution() && s.getDistribution().hasParallelism()) {
-                    return Map.entry(s, s.getDistribution().getParallelism());
+                sink -> {
+                  if (sink.hasDistribution() && sink.hasParallelism()) {
+                    return Map.entry(sink.getTable(), sink.getParallelism());
                   } else {
-                    return Map.entry(s, getParallelism());
+                    return Map.entry(sink.getTable(), getParallelism());
                   }
                 })
             .sorted(Comparator.comparingInt(Entry::getValue))

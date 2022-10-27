@@ -74,8 +74,8 @@ public class DistributeByTaskAssignerTests {
             "",
             "",
             "",
-            new Distribution(
-                DistributeByTaskAssigner.class.getCanonicalName(), properties, tasks.size()));
+            new Distribution(DistributeByTaskAssigner.class.getCanonicalName(), properties),
+            tasks.size());
 
     var taskAssigner = new DistributeByTaskAssigner(assignment, metrics);
     taskAssigner.configure(sink, tasks);

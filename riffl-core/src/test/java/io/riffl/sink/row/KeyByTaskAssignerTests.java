@@ -32,7 +32,8 @@ public class KeyByTaskAssignerTests {
             "",
             "",
             "",
-            new Distribution(KeyByTaskAssigner.class.getCanonicalName(), properties, tasks.size()));
+            new Distribution(KeyByTaskAssigner.class.getCanonicalName(), properties),
+            tasks.size());
 
     taskAssigner.configure(sink, tasks);
 

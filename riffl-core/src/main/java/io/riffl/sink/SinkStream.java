@@ -5,7 +5,6 @@ import io.riffl.sink.allocation.StackedTaskAllocation;
 import io.riffl.sink.allocation.TaskAllocation;
 import io.riffl.sink.row.TaskAssigner;
 import io.riffl.sink.row.TaskAssignerFactory;
-import io.riffl.utils.TableHelper;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -54,10 +53,14 @@ public class SinkStream {
 
     TaskAllocation taskAllocation = new StackedTaskAllocation(sinks, env.getParallelism());
     // Query
-    Map<Sink, DataStream<Row>> queryStream =
+    Map<String, DataStream<Row>> queryStream =
         sinks.stream()
             .map(
                 sink -> {
+                  if (sink.hasCreate()) {
+                    tableEnv.executeSql(sink.getCreate());
+                  }
+
                   Table query = tableEnv.sqlQuery(sink.getQuery());
 
                   if (sink.hasDistribution()) {
@@ -65,9 +68,10 @@ public class SinkStream {
                         taskAssigners.get(sink.getDistribution().getClassName());
                     RowDistributionFunction partitioner =
                         new RowDistributionFunction(sink, taskAssigner, taskAllocation);
-                    return Map.entry(sink, repartition(tableEnv.toDataStream(query), partitioner));
+                    return Map.entry(
+                        sink.getTable(), repartition(tableEnv.toDataStream(query), partitioner));
                   } else {
-                    return Map.entry(sink, tableEnv.toDataStream(query));
+                    return Map.entry(sink.getTable(), tableEnv.toDataStream(query));
                   }
                 })
             .collect(Collectors.toMap(Entry::getKey, Entry::getValue));
@@ -75,25 +79,12 @@ public class SinkStream {
     // Sink
     StreamStatementSet set = tableEnv.createStatementSet();
     queryStream.forEach(
-        (key, value) -> {
-          String tableIdentifier = getTableIdentifier(key);
-          logger.info(tableIdentifier);
-          set.addInsert(tableIdentifier, tableEnv.fromDataStream(value));
+        (table, value) -> {
+          logger.info(table);
+          set.addInsert(table, tableEnv.fromDataStream(value));
         });
 
     return set;
-  }
-
-  String getTableIdentifier(Sink key) {
-    String sinkId = null;
-    if (key.hasCreate()) {
-      tableEnv.executeSql(key.getCreate());
-      sinkId =
-          TableHelper.getCreateTableIdentifier(key.getCreate(), env, tableEnv).asSummaryString();
-    } else if (key.hasInsertIntoTable()) {
-      sinkId = key.getTableIdentifier();
-    }
-    return sinkId;
   }
 
   private Map<String, TaskAssigner> loadTaskAssigners(List<Sink> sinks) {

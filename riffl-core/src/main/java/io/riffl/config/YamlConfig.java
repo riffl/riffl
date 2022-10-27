@@ -11,11 +11,15 @@ import java.util.stream.Collectors;
 
 public class YamlConfig extends ConfigBase {
 
+  private final Parser parser;
+
   private static final String STRING_DELIMITER = "\"";
 
   private final String contentYaml;
 
-  public YamlConfig(String contentYaml) {
+  public YamlConfig(Parser parser, String contentYaml) {
+    super(parser);
+    this.parser = parser;
     this.contentYaml = contentYaml;
   }
 
