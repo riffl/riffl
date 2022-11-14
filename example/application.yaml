@@ -18,37 +18,42 @@ databases:
 sources:
   - create: " 
       CREATE TABLE IF NOT EXISTS source_product (
-          product_id INT,
-          product_type INT,
-          product_name STRING,
-          product_desc STRING
+          id BIGINT,
+          type INT,
+          name STRING,
+          price DECIMAL(10, 2),
+          buyer_name STRING,
+          buyer_address STRING
       ) WITH (
           'connector' = 'datagen',
           'rows-per-second' = '10',
-          'fields.product_type.kind'='random',
-          'fields.product_type.min'='1',
-          'fields.product_type.max'='5'
+          'fields.type.kind'='random',
+          'fields.type.min'='1',
+          'fields.type.max'='10',
+          'fields.price.kind'='random',
+          'fields.price.min'='10',
+          'fields.price.max'='1000'
       )"
     map: "    
         SELECT
-            product_id,
-            product_type,
-            product_name,
-            product_desc,
+            *,
             CURRENT_TIMESTAMP as ts
         FROM source_product
-        WHERE (product_type = 1 AND RAND_INTEGER(0,100) BETWEEN 0 AND 100)
-           OR (product_type = 2 AND RAND_INTEGER(0,100) BETWEEN 0 AND 60)
-           OR (product_type > 2 AND RAND_INTEGER(0,100) BETWEEN 0 AND 30)"
+        WHERE (type = 1 AND RAND_INTEGER(0,100) BETWEEN 0 AND 100)
+           OR (type = 2 AND RAND_INTEGER(0,100) BETWEEN 0 AND 60)
+           OR (type > 2 AND RAND_INTEGER(0,100) BETWEEN 0 AND 30)"
 sinks:
 #  - create: "
 #      CREATE TABLE IF NOT EXISTS sink_default (
-#          product_id INT,
-#          product_type INT,
-#          product_name STRING,
-#          product_desc STRING,
-#          dt STRING,
-#          hr STRING
+#        id BIGINT,
+#        type INT,
+#        name STRING,
+#        price DECIMAL(10, 2),
+#        buyer_name STRING,
+#        buyer_address STRING,
+#        ts TIMESTAMP,
+#        dt STRING,
+#        hr STRING
 #      ) PARTITIONED BY (dt, hr)
 #      WITH (
 #        'connector'='filesystem',
@@ -57,10 +62,13 @@ sinks:
 #      )"
   - create: "
     CREATE TABLE IF NOT EXISTS sink_default (
-        product_id INT,
-        product_type INT,
-        product_name STRING,
-        product_desc STRING,
+        id BIGINT,
+        type INT,
+        name STRING,
+        price DECIMAL(10, 2),
+        buyer_name STRING,
+        buyer_address STRING,
+        ts TIMESTAMP,
         dt STRING,
         hr STRING
     )
@@ -69,10 +77,7 @@ sinks:
     )"
     query: "
       SELECT 
-        product_id,
-        product_type,
-        product_name,
-        product_desc,
+        *,
         CAST(DATE_FORMAT(CURRENT_TIMESTAMP, 'yyyy-MM-dd') AS STRING) AS dt, 
         CAST(DATE_FORMAT(CURRENT_TIMESTAMP, 'HH') AS STRING) AS hr FROM source_product"
     parallelism: 5
@@ -80,4 +85,4 @@ sinks:
       className: "io.riffl.sink.row.DistributeByTaskAssigner"
       properties:
         keys:
-          - "product_type"
+          - "type"
