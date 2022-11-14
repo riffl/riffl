@@ -1,0 +1,12 @@
+riffl
+* BugFix - parallelism is not applied to Sink without custom distribution
+* Sink task allocation should allow responding to traffic and reduce/expand number of tasks per Sink
+* Task assigner metrics should calculate globally and be the same for every Sink task
+  Task assigner metrics should be allowed to persist externally
+* Configuration should allow for Sink query to be optional loading data as-is from the Source
+* Bump Flink version to 1.15
+
+riffl-deployemnt
+* Add Docker build
+* Add GCP docs
+* Add K8s docs
