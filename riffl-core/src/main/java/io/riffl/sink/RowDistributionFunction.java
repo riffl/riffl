@@ -2,7 +2,6 @@ package io.riffl.sink;
 
 import io.riffl.config.Sink;
 import io.riffl.sink.allocation.TaskAllocation;
-import io.riffl.sink.row.RebalanceTaskAssigner;
 import io.riffl.sink.row.TaskAssigner;
 import org.apache.flink.api.common.functions.RichMapFunction;
 import org.apache.flink.api.common.state.CheckpointListener;
@@ -18,7 +17,7 @@ import org.slf4j.LoggerFactory;
 public class RowDistributionFunction extends RichMapFunction<Row, Tuple2<Row, Integer>>
     implements CheckpointedFunction, CheckpointListener {
 
-  private static final Logger logger = LoggerFactory.getLogger(RebalanceTaskAssigner.class);
+  private static final Logger logger = LoggerFactory.getLogger(RowDistributionFunction.class);
   private final TaskAssigner taskAssigner;
   private final Sink sink;
   private final TaskAllocation taskAllocation;

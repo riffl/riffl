@@ -3,7 +3,6 @@ package io.riffl.sink.allocation;
 import io.riffl.config.Sink;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -39,13 +38,13 @@ public class StackedTaskAllocation extends TaskAllocation {
         getSinks().stream()
             .map(
                 sink -> {
-                  if (sink.hasDistribution() && sink.hasParallelism()) {
+                  if (sink.hasParallelism()) {
                     return Map.entry(sink.getTable(), sink.getParallelism());
                   } else {
                     return Map.entry(sink.getTable(), getParallelism());
                   }
                 })
-            .sorted(Comparator.comparingInt(Entry::getValue))
+            .sorted(Entry.comparingByKey())
             .map(
                 e ->
                     Map.entry(
