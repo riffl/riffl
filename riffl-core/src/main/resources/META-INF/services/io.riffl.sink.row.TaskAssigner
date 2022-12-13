@@ -1,3 +1,0 @@
-io.riffl.sink.row.RebalanceTaskAssigner
-io.riffl.sink.row.KeyByTaskAssigner
-io.riffl.sink.row.DistributeByTaskAssigner

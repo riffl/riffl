@@ -5,17 +5,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.riffl.config.Distribution;
 import io.riffl.config.Sink;
-import io.riffl.sink.metrics.TaskAssignerMetrics;
+import io.riffl.sink.metrics.Metrics;
+import io.riffl.sink.row.tasks.TaskAssigner;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import org.apache.flink.runtime.state.FunctionSnapshotContext;
-import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction;
 import org.apache.flink.types.Row;
 import org.apache.flink.types.RowKind;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,51 +20,19 @@ import org.junit.jupiter.api.Test;
 public class DistributeByTaskAssignerTests {
 
   Properties properties;
-  TaskAssignerMetrics metrics;
-  TaskAssignment taskAssignment;
-
-  FunctionSnapshotContext context =
-      new FunctionSnapshotContext() {
-        @Override
-        public long getCheckpointId() {
-          return 0L;
-        }
-
-        @Override
-        public long getCheckpointTimestamp() {
-          return 0L;
-        }
-      };
+  Metrics metrics;
+  TasksAssignment taskAssignment;
 
   @BeforeEach
   void setUp() {
     properties = new Properties();
     properties.put(DistributeByTaskAssigner.PROPERTIES_KEYS, List.of("aaa", "bbb", "ccc"));
-    taskAssignment = new TaskAssignment();
-    metrics =
-        new TaskAssignerMetrics() {
-          private final Map<List<Object>, Long> store = new HashMap<>();
-
-          @Override
-          public void add(List<Object> key, Long value) {
-            store.put(key, value);
-          }
-
-          @Override
-          public Map<List<Object>, Long> getMetrics() {
-            return store;
-          }
-
-          @Override
-          public void clear(long checkpointId) {}
-        };
+    taskAssignment = new TasksAssignment();
+    metrics = new Metrics();
   }
 
-  private TaskAssigner getTaskAssigner(
-      List<Integer> tasks,
-      Properties properties,
-      TaskAssignerMetrics metrics,
-      TaskAssignment assignment) {
+  private TaskAssigner createTaskAssigner(
+      List<Integer> tasks, Properties properties, Metrics metrics, TasksAssignment assignment) {
     Sink sink =
         new Sink(
             "",
@@ -77,128 +41,127 @@ public class DistributeByTaskAssignerTests {
             new Distribution(DistributeByTaskAssigner.class.getCanonicalName(), properties),
             tasks.size());
 
-    var taskAssigner = new DistributeByTaskAssigner(assignment, metrics);
-    taskAssigner.configure(sink, tasks);
-    return taskAssigner;
+    return new DistributeByTaskAssigner(sink, tasks, assignment, metrics);
+  }
+
+  private RowKey getKey(List<Object> keyValues) {
+    Row row = Row.withNames(RowKind.INSERT);
+    ArrayList<String> key = new ArrayList<>();
+
+    for (int i = 0; i < keyValues.size(); i++) {
+      row.setField(Integer.toString(i), keyValues.get(i));
+      key.add(Integer.toString(i));
+    }
+
+    return new RowKey(row, key);
   }
 
   @Test
-  void tasksAssignedAccordingToWeightSkewed() throws Exception {
+  void tasksAssignedAccordingToWeightSkewed() {
     List<Integer> tasks = IntStream.rangeClosed(0, 15).boxed().collect(Collectors.toList());
-    var taskAssigner = getTaskAssigner(tasks, properties, metrics, taskAssignment);
 
-    metrics.add(List.of("aaa", 1), 1000L);
-    metrics.add(List.of("bbb", 1), 10L);
-    metrics.add(List.of("ccc", 1), 10L);
-    metrics.add(List.of("ddd", 1), 10L);
-    metrics.add(List.of("eee", 1), 500L);
-    metrics.add(List.of("fff", 1), (long) Integer.MAX_VALUE);
+    metrics.add(getKey(List.of("aaa", 1)), 1000L);
+    metrics.add(getKey(List.of("bbb", 1)), 10L);
+    metrics.add(getKey(List.of("ccc", 1)), 10L);
+    metrics.add(getKey(List.of("ddd", 1)), 10L);
+    metrics.add(getKey(List.of("eee", 1)), 500L);
+    metrics.add(getKey(List.of("fff", 1)), (long) Integer.MAX_VALUE);
 
-    ((CheckpointedFunction) taskAssigner).snapshotState(context);
+    createTaskAssigner(tasks, properties, metrics, taskAssignment);
 
     assertEquals(
-        taskAssignment.get(List.of("fff", 1)),
+        taskAssignment.get(getKey(List.of("fff", 1))),
         IntStream.rangeClosed(0, 14).boxed().collect(Collectors.toList()));
-    assertEquals(taskAssignment.get(List.of("aaa", 1)), List.of(15));
-    assertEquals(taskAssignment.get(List.of("eee", 1)), List.of(15));
-    assertEquals(taskAssignment.get(List.of("bbb", 1)), List.of(15));
-    assertEquals(taskAssignment.get(List.of("ccc", 1)), List.of(15));
-    assertEquals(taskAssignment.get(List.of("ddd", 1)), List.of(15));
+    assertEquals(taskAssignment.get(getKey(List.of("aaa", 1))), List.of(15));
+    assertEquals(taskAssignment.get(getKey(List.of("eee", 1))), List.of(15));
+    assertEquals(taskAssignment.get(getKey(List.of("bbb", 1))), List.of(15));
+    assertEquals(taskAssignment.get(getKey(List.of("ccc", 1))), List.of(15));
+    assertEquals(taskAssignment.get(getKey(List.of("ddd", 1))), List.of(15));
   }
 
   @Test
-  void tasksAssignedAccordingToWeightBalanced() throws Exception {
+  void tasksAssignedAccordingToWeightBalanced() {
     List<Integer> tasks = IntStream.rangeClosed(0, 15).boxed().collect(Collectors.toList());
-    var taskAssigner = getTaskAssigner(tasks, properties, metrics, taskAssignment);
+    metrics.add(getKey(List.of("aaa", 1)), 1000L);
+    metrics.add(getKey(List.of("bbb", 1)), 10L);
+    metrics.add(getKey(List.of("ccc", 1)), 10L);
+    metrics.add(getKey(List.of("ddd", 1)), 10L);
+    metrics.add(getKey(List.of("eee", 1)), 500L);
 
-    metrics.add(List.of("aaa", 1), 1000L);
-    metrics.add(List.of("bbb", 1), 10L);
-    metrics.add(List.of("ccc", 1), 10L);
-    metrics.add(List.of("ddd", 1), 10L);
-    metrics.add(List.of("eee", 1), 500L);
-
-    ((CheckpointedFunction) taskAssigner).snapshotState(context);
+    createTaskAssigner(tasks, properties, metrics, taskAssignment);
     assertEquals(
-        taskAssignment.get(List.of("aaa", 1)),
+        taskAssignment.get(getKey(List.of("aaa", 1))),
         IntStream.rangeClosed(0, 9).boxed().collect(Collectors.toList()));
     assertEquals(
-        taskAssignment.get(List.of("eee", 1)),
+        taskAssignment.get(getKey(List.of("eee", 1))),
         IntStream.rangeClosed(10, 14).boxed().collect(Collectors.toList()));
-    assertEquals(taskAssignment.get(List.of("bbb", 1)), List.of(15));
-    assertEquals(taskAssignment.get(List.of("ccc", 1)), List.of(15));
-    assertEquals(taskAssignment.get(List.of("ddd", 1)), List.of(15));
+    assertEquals(taskAssignment.get(getKey(List.of("bbb", 1))), List.of(15));
+    assertEquals(taskAssignment.get(getKey(List.of("ccc", 1))), List.of(15));
+    assertEquals(taskAssignment.get(getKey(List.of("ddd", 1))), List.of(15));
   }
 
   @Test
-  void tasksAssignedWithNegativeHashCode() throws Exception {
+  void tasksAssignedWithNegativeHashCode() {
     List<Integer> tasks = IntStream.rangeClosed(0, 4).boxed().collect(Collectors.toList());
-    var taskAssigner = getTaskAssigner(tasks, properties, metrics, taskAssignment);
+    IntStream.rangeClosed(-98, -93).forEach(r -> metrics.add(getKey(List.of(r)), (long) 1));
 
-    IntStream.rangeClosed(-98, -93)
-        .forEach(
-            r -> {
-              metrics.add(List.of(r), (long) 1);
-            });
-
-    ((CheckpointedFunction) taskAssigner).snapshotState(context);
-    assertEquals(taskAssignment.get(List.of(-98)), List.of(1));
-    assertEquals(taskAssignment.get(List.of(-97)), List.of(0));
-    assertEquals(taskAssignment.get(List.of(-96)), List.of(4));
-    assertEquals(taskAssignment.get(List.of(-95)), List.of(3));
-    assertEquals(taskAssignment.get(List.of(-94)), List.of(2));
-    assertEquals(taskAssignment.get(List.of(-93)), List.of(1));
+    createTaskAssigner(tasks, properties, metrics, taskAssignment);
+    assertEquals(taskAssignment.get(getKey(List.of(-98))), List.of(0));
+    assertEquals(taskAssignment.get(getKey(List.of(-97))), List.of(4));
+    assertEquals(taskAssignment.get(getKey(List.of(-96))), List.of(3));
+    assertEquals(taskAssignment.get(getKey(List.of(-95))), List.of(2));
+    assertEquals(taskAssignment.get(getKey(List.of(-94))), List.of(1));
+    assertEquals(taskAssignment.get(getKey(List.of(-93))), List.of(0));
   }
 
   @Test
-  void tasksAssignedForSingleEntry() throws Exception {
+  void tasksAssignedForSingleEntry() {
     List<Integer> tasks = IntStream.rangeClosed(0, 15).boxed().collect(Collectors.toList());
-    var taskAssigner = getTaskAssigner(tasks, properties, metrics, taskAssignment);
-    metrics.add(List.of("aaa", 1), 1000L);
 
-    ((CheckpointedFunction) taskAssigner).snapshotState(context);
-    assertEquals(taskAssignment.get(List.of("aaa", 1)), tasks);
+    metrics.add(getKey(List.of("aaa", 1)), 1000L);
+
+    createTaskAssigner(tasks, properties, metrics, taskAssignment);
+    assertEquals(taskAssignment.get(getKey(List.of("aaa", 1))), tasks);
   }
 
   @Test
-  void tasksShouldBeAssigned_AccordingToWeightEqual() throws Exception {
+  void tasksShouldBeAssigned_AccordingToWeightEqual() {
     List<Integer> tasks = IntStream.rangeClosed(0, 9).boxed().collect(Collectors.toList());
-    var taskAssigner = getTaskAssigner(tasks, properties, metrics, taskAssignment);
 
-    metrics.add(List.of("aaa", 1), 501L);
-    metrics.add(List.of("bbb", 1), 502L);
-    metrics.add(List.of("ccc", 1), 503L);
+    metrics.add(getKey(List.of("aaa", 1)), 501L);
+    metrics.add(getKey(List.of("bbb", 1)), 502L);
+    metrics.add(getKey(List.of("ccc", 1)), 503L);
 
-    ((CheckpointedFunction) taskAssigner).snapshotState(context);
+    createTaskAssigner(tasks, properties, metrics, taskAssignment);
 
     assertEquals(
-        taskAssignment.get(List.of("aaa", 1)),
+        taskAssignment.get(getKey(List.of("aaa", 1))),
         IntStream.rangeClosed(6, 8).boxed().collect(Collectors.toList()));
     assertEquals(
-        taskAssignment.get(List.of("bbb", 1)),
+        taskAssignment.get(getKey(List.of("bbb", 1))),
         IntStream.rangeClosed(3, 5).boxed().collect(Collectors.toList()));
     assertEquals(
-        taskAssignment.get(List.of("ccc", 1)),
+        taskAssignment.get(getKey(List.of("ccc", 1))),
         IntStream.rangeClosed(0, 2).boxed().collect(Collectors.toList()));
   }
 
   @Test
-  void tasksShouldBeAssignedOnLowThroughput() throws Exception {
+  void tasksShouldBeAssignedOnLowThroughput() {
     List<Integer> tasks = IntStream.rangeClosed(0, 50000).boxed().collect(Collectors.toList());
-    var taskAssigner = getTaskAssigner(tasks, properties, metrics, taskAssignment);
 
-    metrics.add(List.of("aaa", 1), 25L);
-    metrics.add(List.of("bbb", 1), 25L);
+    metrics.add(getKey(List.of("aaa", 1)), 25L);
+    metrics.add(getKey(List.of("bbb", 1)), 25L);
 
-    ((CheckpointedFunction) taskAssigner).snapshotState(context);
+    createTaskAssigner(tasks, properties, metrics, taskAssignment);
 
-    assertEquals(tasks.subList(0, 25), taskAssignment.get(List.of("aaa", 1)));
-    assertEquals(tasks.subList(25, 50), taskAssignment.get(List.of("bbb", 1)));
+    assertEquals(tasks.subList(0, 25), taskAssignment.get(getKey(List.of("bbb", 1))));
+    assertEquals(tasks.subList(25, 50), taskAssignment.get(getKey(List.of("aaa", 1))));
   }
 
   @Test
-  void rowShouldBeHandledWithStandardValues() throws Exception {
+  void rowShouldBeHandledWithStandardValues() {
     List<Integer> tasks = IntStream.rangeClosed(0, 1).boxed().collect(Collectors.toList());
-    var taskAssigner = getTaskAssigner(tasks, properties, metrics, taskAssignment);
+    var taskAssigner = createTaskAssigner(tasks, properties, metrics, taskAssignment);
 
     Row row = Row.withNames(RowKind.INSERT);
 
@@ -206,43 +169,35 @@ public class DistributeByTaskAssignerTests {
     row.setField("bbb", 0.1d);
     row.setField("ccc", null);
 
-    assertTrue(tasks.contains(taskAssigner.taskIndex(row)));
-
-    ((CheckpointedFunction) taskAssigner).snapshotState(context);
-
-    List<Object> key = new ArrayList<>(Arrays.asList("aaaData", 0.1d, null));
-
-    assertTrue(metrics.getMetrics().containsKey(key));
-    assertEquals(1, metrics.getMetrics().get(key));
+    assertTrue(tasks.contains(taskAssigner.getTask(row, taskAssigner.getKey(row))));
   }
 
   @Test
-  void tasksShouldBeAssignedAccordingToWeightWithUnorderedTasks() throws Exception {
+  void tasksShouldBeAssignedAccordingToWeightWithUnorderedTasks() {
     List<Integer> tasks = List.of(1, 0, 9, 5, 3);
-    var taskAssigner = getTaskAssigner(tasks, properties, metrics, taskAssignment);
 
     IntStream.rangeClosed(0, 2)
         .forEach(
-            l -> {
-              IntStream.rangeClosed(0, 9).forEach(s -> metrics.add(List.of(l, s), 140L));
-            });
-    metrics.add(List.of(1, 1), 7170L);
+            l ->
+                IntStream.rangeClosed(0, 9).forEach(s -> metrics.add(getKey(List.of(l, s)), 140L)));
+    metrics.add(getKey(List.of(1, 1)), 7170L);
 
-    ((CheckpointedFunction) taskAssigner).snapshotState(context);
+    createTaskAssigner(tasks, properties, metrics, taskAssignment);
 
     IntStream.rangeClosed(0, 2)
         .forEach(
-            l -> {
-              IntStream.rangeClosed(0, 9)
-                  .forEach(
-                      i -> {
-                        if (List.of(1, 1).equals(List.of(l, i))) {
-                          assertEquals(List.of(1, 0, 9), taskAssignment.get(List.of(l, i)));
-                        } else {
-                          assertTrue(
-                              List.of(5, 3).contains(taskAssignment.get(List.of(l, i)).get(0)));
-                        }
-                      });
-            });
+            l ->
+                IntStream.rangeClosed(0, 9)
+                    .forEach(
+                        i -> {
+                          if (List.of(1, 1).equals(List.of(l, i))) {
+                            assertEquals(
+                                List.of(1, 0, 9), taskAssignment.get(getKey(List.of(l, i))));
+                          } else {
+                            assertTrue(
+                                List.of(5, 3)
+                                    .contains(taskAssignment.get(getKey(List.of(l, i))).get(0)));
+                          }
+                        }));
   }
 }

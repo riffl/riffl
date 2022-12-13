@@ -1,14 +1,21 @@
-package io.riffl.sink.row;
+package io.riffl.sink.row.tasks;
 
 import java.text.MessageFormat;
 import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.ServiceLoader.Provider;
 
-public class TaskAssignerFactory {
-  public static TaskAssigner load(String className) {
-    ServiceLoader<TaskAssigner> taskAssigners = ServiceLoader.load(TaskAssigner.class);
-    Optional<Provider<TaskAssigner>> taskAssigner =
+public class TaskAssignerLoader<T> {
+
+  private final Class<T> classType;
+
+  public TaskAssignerLoader(Class<T> classType) {
+    this.classType = classType;
+  }
+
+  public T load(String className) {
+    ServiceLoader<T> taskAssigners = ServiceLoader.load(classType);
+    Optional<Provider<T>> taskAssigner =
         taskAssigners.stream()
             .filter(ta -> ta.type().getCanonicalName().equals(className))
             .findFirst();

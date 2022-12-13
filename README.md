@@ -62,7 +62,7 @@ sinks:
     parallelism: 5
     # [optional] Custom data distribution configuartion to optimize the output  
     distribution:
-      className: "io.riffl.sink.row.KeyByTaskAssigner"
+      className: "io.riffl.sink.row.KeyByFactory"
       properties:
         keys:
           - "someField_2"

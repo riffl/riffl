@@ -2,8 +2,8 @@ package io.riffl.sink.row;
 
 import io.riffl.config.ConfigUtils;
 import io.riffl.config.Sink;
+import io.riffl.sink.row.tasks.TaskAssigner;
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
@@ -18,26 +18,17 @@ public class KeyByTaskAssigner implements TaskAssigner, Serializable {
   static final String PROPERTIES_KEYS = "keys";
   static final String PROPERTIES_KEY_PARALLELISM = "keyParallelism";
 
-  private static final Logger logger = LoggerFactory.getLogger(KeyByTaskAssigner.class);
+  private static final Logger logger = LoggerFactory.getLogger(KeyByFactory.class);
 
   private List<Integer> tasks;
-  private ThreadLocalRandom random;
-  private List<String> keys;
+  private final ThreadLocalRandom random;
+  private final List<String> keys;
 
-  private Integer keyParallelism;
+  private final Integer keyParallelism;
 
-  private final TaskAssignment taskAssignment;
+  private final TasksAssignment tasksAssignment;
 
-  public KeyByTaskAssigner() {
-    this(new TaskAssignment());
-  }
-
-  public KeyByTaskAssigner(TaskAssignment taskAssignment) {
-    this.taskAssignment = taskAssignment;
-  }
-
-  @Override
-  public void configure(Sink sink, List<Integer> tasks) {
+  public KeyByTaskAssigner(Sink sink, List<Integer> tasks, TasksAssignment tasksAssignment) {
     this.tasks = tasks;
     this.random = ThreadLocalRandom.current();
     this.keys =
@@ -47,22 +38,24 @@ public class KeyByTaskAssigner implements TaskAssigner, Serializable {
             PROPERTIES_KEY_PARALLELISM, sink.getDistribution().getProperties());
 
     logger.debug("{} created with tasks {}", sink, tasks);
+    this.tasksAssignment = tasksAssignment;
   }
 
   @Override
-  public int taskIndex(Row row) {
-    List<Object> key = new ArrayList<>();
-    for (var k : keys) {
-      key.add(row.getField(k));
-    }
+  public RowKey getKey(Row row) {
+    return new RowKey(row, keys);
+  }
+
+  @Override
+  public int getTask(Row row, RowKey key) {
     Integer tasksIndex;
-    if (!taskAssignment.containsKey(key)) {
+    if (!tasksAssignment.containsKey(key)) {
       tasks = tasks.stream().sorted().collect(Collectors.toList());
 
       Collections.shuffle(tasks, new Random(key.hashCode()));
 
       List<Integer> keyTasks = tasks.subList(0, keyParallelism);
-      taskAssignment.put(key, keyTasks);
+      tasksAssignment.put(key, keyTasks);
       logger.debug(
           "Key {}, hashCode {}, created with keyTasks {}, out of {}",
           key,
@@ -70,7 +63,7 @@ public class KeyByTaskAssigner implements TaskAssigner, Serializable {
           keyTasks,
           tasks);
     }
-    tasksIndex = taskAssignment.get(key).get(random.nextInt(taskAssignment.get(key).size()));
+    tasksIndex = tasksAssignment.get(key).get(random.nextInt(tasksAssignment.get(key).size()));
     return tasksIndex;
   }
 }
