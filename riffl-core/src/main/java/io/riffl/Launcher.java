@@ -57,6 +57,11 @@ public class Launcher {
 
     new SourceStream(env, tableEnv).build(appConfig.getSources());
 
-    new SinkStream(env, tableEnv).build(appConfig.getSinks()).execute();
+    new SinkStream(env, tableEnv).build(appConfig.getSinks()).attachAsDataStream();
+    try {
+      env.execute();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 }
