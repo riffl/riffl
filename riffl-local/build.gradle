@@ -15,6 +15,7 @@ dependencies {
     implementation libs.flink.csv
     implementation libs.flink.parquet
     implementation libs.flink.runtime.web
+    implementation libs.flink.table.runtime
 
 }
 

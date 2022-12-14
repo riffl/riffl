@@ -11,6 +11,7 @@ dependencies {
 
     runtimeOnly libs.bundles.log4j
     testImplementation libs.bundles.tests
+    testImplementation libs.flink.table.runtime
 }
 
 test {

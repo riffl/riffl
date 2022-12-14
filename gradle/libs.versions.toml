@@ -1,5 +1,5 @@
 [versions]
-flink = "1.14.5"
+flink = "1.15.2"
 log4j = "2.17.1"
 mockito = "4.6.1"
 junit = "5.8.2"
@@ -10,20 +10,18 @@ commons-text = "1.10.0"
 spotless = "6.11.0"
 
 [libraries]
-flink-streaming-java = { module = "org.apache.flink:flink-streaming-java_2.12", version.ref = "flink" }
-flink-table = { module = "org.apache.flink:flink-table", version.ref = "flink" }
-flink-table-api-java = { module = "org.apache.flink:flink-table-api-java", version.ref = "flink" }
-flink-table-planner = { module = "org.apache.flink:flink-table-planner_2.12", version.ref = "flink" }
-flink-table-api-java-bridge = { module = "org.apache.flink:flink-table-api-java-bridge_2.12", version.ref = "flink" }
-flink-table-common = { module = "org.apache.flink:flink-table-common", version.ref = "flink" }
+flink-streaming-java = { module = "org.apache.flink:flink-streaming-java", version.ref = "flink" }
+flink-table-runtime = { module = "org.apache.flink:flink-table-runtime", version.ref = "flink" }
+flink-table-planner-loader = { module = "org.apache.flink:flink-table-planner-loader", version.ref = "flink" }
+flink-table-api-java-bridge = { module = "org.apache.flink:flink-table-api-java-bridge", version.ref = "flink" }
 
 flink-connector-files = { module = "org.apache.flink:flink-connector-files", version.ref = "flink" }
 
 # riffl-local
-flink-runtime-web = { module = "org.apache.flink:flink-runtime-web_2.12", version.ref = "flink" }
-flink-clients = { module = "org.apache.flink:flink-clients_2.12", version.ref = "flink" }
+flink-runtime-web = { module = "org.apache.flink:flink-runtime-web", version.ref = "flink" }
+flink-clients = { module = "org.apache.flink:flink-clients", version.ref = "flink" }
 flink-csv = { module = "org.apache.flink:flink-csv", version.ref = "flink" }
-flink-parquet = { module = "org.apache.flink:flink-parquet_2.12", version.ref = "flink" }
+flink-parquet = { module = "org.apache.flink:flink-parquet", version.ref = "flink" }
 hadoop-client = { module = "org.apache.hadoop:hadoop-client", version.ref = "hadoop-local-runner" }
 
 log4j-slf4j-impl = { module = "org.apache.logging.log4j:log4j-slf4j-impl", version.ref = "log4j" }
@@ -42,11 +40,8 @@ commons-text = { module = "org.apache.commons:commons-text", version.ref = "comm
 [bundles]
 flink-core = [
     "flink-streaming-java",
-    "flink-table-api-java",
-    "flink-table-planner",
-    "flink-table-api-java-bridge",
-    "flink-table-common",
-    "flink-table",
+    "flink-table-planner-loader",
+    "flink-table-api-java-bridge"
 ]
 
 log4j = ['log4j-slf4j-impl', 'log4j-api', 'log4j-core']
