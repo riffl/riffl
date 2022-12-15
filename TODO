@@ -1,9 +1,10 @@
 riffl
 * Sink task allocation should allow responding to traffic and reduce/expand number of tasks per Sink
-* Task assigner metrics should calculate globally and be the same for every Sink task
-  Task assigner metrics should be allowed to persist externally
+[DONE] * Task assigner metrics should calculate globally and be the same for every Sink task
+[DONE]   Task assigner metrics should be allowed to persist externally
 * Configuration should allow for Sink query to be optional loading data as-is from the Source
-* Bump Flink version to 1.15
+[DONE] * Bump Flink version to 1.15
+* Metric local store should be limited in size e.g. frequent item sketch
 
 riffl-deployemnt
 * Add Docker build

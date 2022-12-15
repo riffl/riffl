@@ -8,6 +8,7 @@ jackson = "2.13.3"
 hadoop-local-runner = "2.10.2" # riffl-local
 commons-text = "1.10.0"
 spotless = "6.11.0"
+caffeine = "3.1.2"
 
 [libraries]
 flink-streaming-java = { module = "org.apache.flink:flink-streaming-java", version.ref = "flink" }
@@ -36,6 +37,7 @@ typesafe-config = { module = "com.typesafe:config", version.ref = "typesafe-conf
 jackson-core = { module = "com.fasterxml.jackson.core:jackson-core", version.ref = "jackson" }
 jackson-dataformat-yaml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml", version.ref = "jackson" }
 commons-text = { module = "org.apache.commons:commons-text", version.ref = "commons-text" }
+caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
 
 [bundles]
 flink-core = [

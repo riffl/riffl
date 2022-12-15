@@ -8,6 +8,7 @@ dependencies {
     implementation libs.jackson.core
     implementation libs.jackson.dataformat.yaml
     implementation libs.commons.text
+    implementation libs.caffeine
 
     runtimeOnly libs.bundles.log4j
     testImplementation libs.bundles.tests
