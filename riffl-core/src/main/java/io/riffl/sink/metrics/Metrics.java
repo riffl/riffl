@@ -8,6 +8,7 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Set;
 
 public class Metrics implements Serializable {
@@ -35,6 +36,23 @@ public class Metrics implements Serializable {
 
   public Set<Entry<RowKey, Long>> entrySet() {
     return store.entrySet();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    Metrics metrics = (Metrics) o;
+    return store.equals(metrics.store);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(store);
   }
 
   @Override

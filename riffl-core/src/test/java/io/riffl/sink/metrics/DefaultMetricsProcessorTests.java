@@ -2,16 +2,16 @@ package io.riffl.sink.metrics;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import io.riffl.config.Distribution;
 import io.riffl.config.Sink;
 import io.riffl.sink.row.RowKey;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map.Entry;
 import java.util.Properties;
-import java.util.stream.Collectors;
-import org.apache.flink.core.fs.Path;
 import org.apache.flink.types.Row;
 import org.apache.flink.types.RowKind;
 import org.junit.jupiter.api.Test;
@@ -21,7 +21,7 @@ public class DefaultMetricsProcessorTests {
   @Test
   void processorShouldRecordAndExposeMetricsForConsumption() {
     var sink = new Sink("", "", "", new Distribution("Test", new Properties()), 1);
-    var processor = new DefaultMetricsProcessor(sink, new Path("file://"));
+    var processor = new DefaultMetricsProcessor(sink, null);
     Row row = Row.withNames(RowKind.INSERT);
 
     row.setField("aaa", "aaaData");
@@ -37,23 +37,13 @@ public class DefaultMetricsProcessorTests {
   }
 
   @Test
-  void processorShouldLoadMetricsFromFile() {
+  void processorShouldLoadMetrics() {
     var sink = new Sink("", "", "", new Distribution("Test", new Properties()), 1);
-    var processor =
-        new DefaultMetricsProcessor(sink, new Path("./src/test/resources/metrics-table_name-"));
-    var metrics = processor.getMetrics(3);
-    var result =
-        metrics.entrySet().stream().collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+    var metricStore = mock(FilesystemMetricsStore.class);
+    var processor = new DefaultMetricsProcessor(sink, metricStore);
+    processor.getMetrics(10);
 
-    Row row = Row.withNames(RowKind.INSERT);
-    row.setField("aaa", "aaaData");
-    row.setField("bbb", 0.1d);
-    row.setField("ccc", null);
-    var key1 = new RowKey(row, List.of("aaa", "bbb", "ccc"));
-    var key2 = new RowKey(row, List.of("aaa", "bbb"));
-
-    assertEquals(2, result.size());
-    assertEquals(1L, result.get(key1));
-    assertEquals(10000L, result.get(key2));
+    verify(metricStore, times(1)).loadMetrics(9L);
+    verify(metricStore, times(1)).removeMetrics(5L);
   }
 }

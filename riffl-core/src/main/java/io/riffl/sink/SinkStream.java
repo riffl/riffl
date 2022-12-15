@@ -3,6 +3,7 @@ package io.riffl.sink;
 import io.riffl.config.Sink;
 import io.riffl.sink.allocation.StackedTaskAllocation;
 import io.riffl.sink.allocation.TaskAllocation;
+import io.riffl.sink.metrics.FilesystemMetricsStore;
 import io.riffl.sink.metrics.MetricsSink;
 import io.riffl.sink.row.tasks.TaskAssignerDefaultFactory;
 import io.riffl.sink.row.tasks.TaskAssignerFactory;
@@ -16,8 +17,8 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.configuration.ConfigOptions;
 import org.apache.flink.core.fs.Path;
+import org.apache.flink.runtime.state.storage.FileSystemCheckpointStorage;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -46,13 +47,11 @@ public class SinkStream {
     TaskAssignerFactory taskAssignerFactory = loader.load(sink.getDistribution().getClassName());
     SingleOutputStreamOperator<Tuple2<Row, Integer>> distribution;
     if (taskAssignerFactory instanceof TaskAssignerMetricsFactory) {
-      var metricsPathBase = getPath(env);
+      var metricsPath = SinkUtils.getMetricsPath(getPath(env), sink);
+      var metricsStore = new FilesystemMetricsStore(metricsPath);
       var partitioner =
           new PartitionerMetrics(
-              sink,
-              (TaskAssignerMetricsFactory) taskAssignerFactory,
-              taskAllocation,
-              metricsPathBase);
+              sink, (TaskAssignerMetricsFactory) taskAssignerFactory, taskAllocation, metricsStore);
 
       distribution =
           stream
@@ -63,7 +62,7 @@ public class SinkStream {
 
       var metricsStream = distribution.getSideOutput(SinkUtils.getMetricsOutputTag(sink));
       metricsStream
-          .addSink(new MetricsSink(sink, metricsPathBase))
+          .addSink(new MetricsSink(metricsStore))
           .name(SinkUtils.getOperatorName(sink, "metrics-sink"))
           .uid(SinkUtils.getOperatorName(sink, "metrics-sink"))
           .setParallelism(1);
@@ -89,17 +88,12 @@ public class SinkStream {
   }
 
   private Path getPath(StreamExecutionEnvironment env) {
-    //    if (env.getCheckpointConfig().getCheckpointStorage() instanceof
-    // FileSystemCheckpointStorage) {
-    //      var storage = (FileSystemCheckpointStorage)
-    // env.getCheckpointConfig().getCheckpointStorage();
-    //      metricsPath = storage.getCheckpointPath();
-    //    } else {
-    //      throw new RuntimeException("Checkpointing must be configured.");
-    //    }
-    return new Path(
-        env.getConfiguration()
-            .get(ConfigOptions.key("state.checkpoints.dir").stringType().noDefaultValue()));
+    if (env.getCheckpointConfig().getCheckpointStorage() instanceof FileSystemCheckpointStorage) {
+      var storage = (FileSystemCheckpointStorage) env.getCheckpointConfig().getCheckpointStorage();
+      return storage.getCheckpointPath();
+    } else {
+      throw new RuntimeException("Checkpointing must be configured.");
+    }
   }
 
   public StreamStatementSet build(List<Sink> sinks) {

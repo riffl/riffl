@@ -6,12 +6,12 @@ import io.riffl.sink.metrics.DefaultMetricsProcessor;
 import io.riffl.sink.metrics.Metric;
 import io.riffl.sink.metrics.Metrics;
 import io.riffl.sink.metrics.MetricsProcessor;
+import io.riffl.sink.metrics.MetricsStore;
 import io.riffl.sink.row.TasksAssignment;
 import io.riffl.sink.row.tasks.TaskAssigner;
 import io.riffl.sink.row.tasks.TaskAssignerMetricsFactory;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.core.fs.Path;
 import org.apache.flink.runtime.state.FunctionInitializationContext;
 import org.apache.flink.runtime.state.FunctionSnapshotContext;
 import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction;
@@ -24,7 +24,7 @@ public class PartitionerMetrics extends ProcessFunction<Row, Tuple2<Row, Integer
     implements CheckpointedFunction {
 
   private final Sink sink;
-  private final Path metricsPathBase;
+  private final MetricsStore metricsStore;
   private final OutputTag<Metric> outputTag;
   private final TaskAssignerMetricsFactory taskAssignerFactory;
   private final TaskAllocation taskAllocation;
@@ -37,20 +37,17 @@ public class PartitionerMetrics extends ProcessFunction<Row, Tuple2<Row, Integer
       Sink sink,
       TaskAssignerMetricsFactory taskAssignerFactory,
       TaskAllocation taskAllocation,
-      Path metricsPathBase) {
+      MetricsStore metricsStore) {
     this.sink = sink;
     this.taskAssignerFactory = taskAssignerFactory;
     this.taskAllocation = taskAllocation;
-    this.metricsPathBase = metricsPathBase;
+    this.metricsStore = metricsStore;
     this.outputTag = SinkUtils.getMetricsOutputTag(sink);
   }
 
   @Override
-  public void open(Configuration parameters) throws Exception {
-    super.open(parameters);
-    var metricsPath =
-        SinkUtils.getMetricsPath(metricsPathBase, sink, getRuntimeContext().getJobId());
-    this.metricsProcessor = new DefaultMetricsProcessor(sink, metricsPath);
+  public void open(Configuration parameters) {
+    this.metricsProcessor = new DefaultMetricsProcessor(sink, metricsStore);
     this.taskAllocation.configure();
     this.tasksAssignment = new TasksAssignment();
     this.taskAssigner =
