@@ -64,7 +64,9 @@ abstract class ConfigBase {
     Config config = getConfig();
     var type = Execution.Type.valueOf(config.getString(CONFIG_EXECUTION_TYPE));
     var configuration = new Properties();
-    configuration.putAll(config.getConfig(CONFIG_EXECUTION_CONFIGURATION).root().unwrapped());
+    if (config.hasPath(CONFIG_EXECUTION_CONFIGURATION)) {
+      configuration.putAll(config.getConfig(CONFIG_EXECUTION_CONFIGURATION).root().unwrapped());
+    }
     return new Execution(type, configuration);
   }
 

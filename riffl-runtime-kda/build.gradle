@@ -1,0 +1,36 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'com.github.johnrengelman.shadow' version '7.1.2'
+}
+
+application {
+    mainClass = 'io.riffl.kda.Riffl'
+}
+
+dependencies {
+    implementation(project(":riffl-core")) {
+        exclude group: 'org.apache.flink'
+        exclude group: 'com.google.code.findbugs', module: 'jsr305'
+        exclude group: 'org.slf4j'
+        exclude group: 'org.apache.logging.log4j'
+    }
+    implementation libs.flink.connector.files
+    implementation libs.aws.kinesisanalytics.runtime
+    implementation libs.iceberg.flink.runtime
+    //org/apache/hadoop/conf/Configuration
+    implementation libs.hadoop.common
+    //org/apache/flink/runtime/util/HadoopUtils
+    implementation libs.hadoop.hdfs
+    //org/apache/flink/runtime/util/HadoopUtils
+    implementation libs.flink.hadoop.fs
+
+    implementation libs.bundles.iceberg.aws
+}
+
+shadowJar {
+    mergeServiceFiles()
+    zip64 true
+    relocate 'org.apache.hadoop', 'shadow.org.apache.hadoop'
+    relocate 'org.apache.flink.runtime.util.HadoopUtils', 'shadow.org.apache.flink.runtime.util.HadoopUtils'
+}

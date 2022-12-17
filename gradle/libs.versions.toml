@@ -5,10 +5,13 @@ mockito = "4.6.1"
 junit = "5.8.2"
 typesafe-config = "1.4.2"
 jackson = "2.13.3"
-hadoop-local-runner = "2.10.2" # riffl-local
+hadoop = "2.10.2"
 commons-text = "1.10.0"
 spotless = "6.11.0"
 caffeine = "3.1.2"
+awssdk = "2.17.257"
+iceberg = "1.1.0"
+kinesisanalytics = "1.2.0"
 
 [libraries]
 flink-streaming-java = { module = "org.apache.flink:flink-streaming-java", version.ref = "flink" }
@@ -23,8 +26,23 @@ flink-runtime-web = { module = "org.apache.flink:flink-runtime-web", version.ref
 flink-clients = { module = "org.apache.flink:flink-clients", version.ref = "flink" }
 flink-csv = { module = "org.apache.flink:flink-csv", version.ref = "flink" }
 flink-parquet = { module = "org.apache.flink:flink-parquet", version.ref = "flink" }
-hadoop-client = { module = "org.apache.hadoop:hadoop-client", version.ref = "hadoop-local-runner" }
+hadoop-client = { module = "org.apache.hadoop:hadoop-client", version.ref = "hadoop" }
 
+# riffl-kda
+aws-kinesisanalytics-runtime = { module = "com.amazonaws:aws-kinesisanalytics-runtime", version.ref = "kinesisanalytics" }
+iceberg-flink-runtime = { module = "org.apache.iceberg:iceberg-flink-runtime-1.15", version.ref = "iceberg" }
+hadoop-common = { module = "org.apache.hadoop:hadoop-common", version.ref = "hadoop" }
+hadoop-hdfs = { module = "org.apache.hadoop:hadoop-hdfs", version.ref = "hadoop" }
+flink-hadoop-fs = { module = "org.apache.flink:flink-hadoop-fs", version.ref = "flink" }
+
+aws-s3 = { module = "software.amazon.awssdk:s3", version.ref = "awssdk" }
+aws-glue = { module = "software.amazon.awssdk:glue", version.ref = "awssdk" }
+aws-sts = { module = "software.amazon.awssdk:sts", version.ref = "awssdk" }
+aws-dynamodb = { module = "software.amazon.awssdk:dynamodb", version.ref = "awssdk" }
+aws-kms = { module = "software.amazon.awssdk:kms", version.ref = "awssdk" }
+aws-url-connection-client = { module = "software.amazon.awssdk:url-connection-client", version.ref = "awssdk" }
+
+# core
 log4j-slf4j-impl = { module = "org.apache.logging.log4j:log4j-slf4j-impl", version.ref = "log4j" }
 log4j-api = { module = "org.apache.logging.log4j:log4j-api", version.ref = "log4j" }
 log4j-core = { module = "org.apache.logging.log4j:log4j-core", version.ref = "log4j" }
@@ -44,6 +62,15 @@ flink-core = [
     "flink-streaming-java",
     "flink-table-planner-loader",
     "flink-table-api-java-bridge"
+]
+
+iceberg-aws = [
+    "aws-s3",
+    "aws-glue",
+    "aws-sts",
+    "aws-dynamodb",
+    "aws-kms",
+    "aws-url-connection-client"
 ]
 
 log4j = ['log4j-slf4j-impl', 'log4j-api', 'log4j-core']

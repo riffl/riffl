@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import io.riffl.config.Execution.Type;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
@@ -23,20 +24,23 @@ public class YamlConfigTests {
     assertNotNull(
         new YamlConfig(
                 parser,
-                ConfigUtils.openFileAsString(new Path("src/test/resources/testApplication.yaml")))
+                ConfigUtils.openFileAsString(new Path("src/test/resources/testApplication.yaml")),
+                new Properties())
             .getConfig());
     assertNotNull(
         new YamlConfig(
                 parser,
                 ConfigUtils.openFileAsString(
-                    new Path("src/test/resources/testApplicationNoOverrides.yaml")))
+                    new Path("src/test/resources/testApplicationNoOverrides.yaml")),
+                new Properties())
             .getConfig());
   }
 
   @Test
   void yamlConfigPlaceholdersShouldBeExpanded() {
     Path definitionPath = new Path("src/test/resources/testApplication.yaml");
-    var config = new YamlConfig(parser, ConfigUtils.openFileAsString(definitionPath));
+    var config =
+        new YamlConfig(parser, ConfigUtils.openFileAsString(definitionPath), new Properties());
     assertEquals(
         "WITH ('path'='${overrides.bucket}${overrides.path}')", config.getCatalogs().get(0).create);
   }
@@ -44,7 +48,8 @@ public class YamlConfigTests {
   @Test
   void yamlConfigOverridesShouldBeReturnedAsMap() {
     Path definitionPath = new Path("src/test/resources/testApplication.yaml");
-    var config = new YamlConfig(parser, ConfigUtils.openFileAsString(definitionPath));
+    var config =
+        new YamlConfig(parser, ConfigUtils.openFileAsString(definitionPath), new Properties());
     assertEquals(
         Map.of(
             "name", "Riffl application",
@@ -72,10 +77,26 @@ public class YamlConfigTests {
   @Test
   void executionShouldBeLoaded() {
     Path definitionPath = new Path("src/test/resources/testApplication.yaml");
-    var config = new YamlConfig(parser, ConfigUtils.openFileAsString(definitionPath));
+    var config =
+        new YamlConfig(parser, ConfigUtils.openFileAsString(definitionPath), new Properties());
     assertEquals(Type.FLINK, config.getExecution().getType());
     assertEquals(
         Map.of("execution.checkpointing.mode", "EXACTLY_ONCE", "execution.some.s3.timeout", 60),
+        config.getExecution().getProperties());
+  }
+
+  @Test
+  void entriesShouldBeOverriddenByProperties() {
+    Path definitionPath = new Path("src/test/resources/testApplication.yaml");
+
+    var properties = new Properties();
+    properties.put("execution.configuration.\"execution.checkpointing.mode\"", "AT_LEAST_ONCE");
+    properties.put("overrides.s3.timeout", 50);
+    var config = new YamlConfig(parser, ConfigUtils.openFileAsString(definitionPath), properties);
+
+    assertEquals(Type.FLINK, config.getExecution().getType());
+    assertEquals(
+        Map.of("execution.checkpointing.mode", "AT_LEAST_ONCE", "execution.some.s3.timeout", 50),
         config.getExecution().getProperties());
   }
 }

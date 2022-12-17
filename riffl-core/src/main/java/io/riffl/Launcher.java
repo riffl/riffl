@@ -6,8 +6,8 @@ import io.riffl.config.YamlConfig;
 import io.riffl.sink.SinkStream;
 import io.riffl.source.SourceStream;
 import io.riffl.utils.MetaRegistration;
+import java.util.Properties;
 import java.util.stream.Collectors;
-import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.PipelineOptions;
 import org.apache.flink.core.fs.Path;
@@ -20,17 +20,14 @@ public class Launcher {
     return false;
   }
 
-  public void execute(String[] args) {
-
-    String application = ParameterTool.fromArgs(args).getRequired("application");
-
+  public void execute(String applicationUri, Properties properties) {
     var parser =
         new FlinkParser(
             StreamExecutionEnvironment.getExecutionEnvironment(),
             StreamTableEnvironment.create(StreamExecutionEnvironment.getExecutionEnvironment()));
 
     YamlConfig appConfig =
-        new YamlConfig(parser, ConfigUtils.openFileAsString(new Path(application)));
+        new YamlConfig(parser, ConfigUtils.openFileAsString(new Path(applicationUri)), properties);
     var executionConfig =
         appConfig.getExecution().getProperties().entrySet().stream()
             .collect(Collectors.toMap(e -> e.getKey().toString(), e -> e.getValue().toString()));
