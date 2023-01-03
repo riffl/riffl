@@ -1,13 +1,14 @@
 package io.riffl.config;
 
 import com.typesafe.config.Config;
+import java.net.URI;
 import java.text.MessageFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.stream.Collectors;
 
-abstract class ConfigBase {
+public abstract class ConfigBase {
 
   private final Parser parser;
   static final String CONFIG_CATALOGS = "catalogs";
@@ -36,6 +37,13 @@ abstract class ConfigBase {
   static final String CONFIG_EXECUTION_CONFIGURATION =
       CONFIG_EXECUTION + CONFIG_DELIMITER + "configuration";
   static final String CONFIG_EXECUTION_TYPE = CONFIG_EXECUTION + CONFIG_DELIMITER + "type";
+
+  protected static final String CONFIG_METRICS = "metrics";
+
+  protected static final String CONFIG_METRICS_STORE_URI =
+      CONFIG_METRICS + CONFIG_DELIMITER + "storeUri";
+  protected static final String CONFIG_METRICS_SKIP_ON_FAILURE =
+      CONFIG_METRICS + CONFIG_DELIMITER + "skipOnFailure";
 
   protected ConfigBase(Parser parser) {
     this.parser = parser;
@@ -68,6 +76,28 @@ abstract class ConfigBase {
       configuration.putAll(config.getConfig(CONFIG_EXECUTION_CONFIGURATION).root().unwrapped());
     }
     return new Execution(type, configuration);
+  }
+
+  public Metrics getMetrics() {
+    Config config = getConfig();
+    URI storeUri;
+    if (config.hasPath(CONFIG_METRICS_STORE_URI)) {
+      storeUri = URI.create(config.getString(CONFIG_METRICS_STORE_URI));
+    } else {
+      var checkpointUri = parser.getCheckpointUri();
+      if (checkpointUri != null) {
+        storeUri = checkpointUri;
+      } else {
+        throw new RuntimeException(
+            MessageFormat.format(
+                "{0} or checkpointing must be configured.", CONFIG_METRICS_STORE_URI));
+      }
+    }
+
+    return new Metrics(
+        storeUri,
+        config.hasPath(CONFIG_METRICS_SKIP_ON_FAILURE)
+            && config.getBoolean(CONFIG_METRICS_SKIP_ON_FAILURE));
   }
 
   public List<Database> getDatabases() {

@@ -1,5 +1,6 @@
 package io.riffl.sink;
 
+import io.riffl.config.ConfigBase;
 import io.riffl.config.Sink;
 import io.riffl.sink.allocation.StackedTaskAllocation;
 import io.riffl.sink.allocation.TaskAllocation;
@@ -9,7 +10,6 @@ import io.riffl.sink.row.tasks.TaskAssignerDefaultFactory;
 import io.riffl.sink.row.tasks.TaskAssignerFactory;
 import io.riffl.sink.row.tasks.TaskAssignerLoader;
 import io.riffl.sink.row.tasks.TaskAssignerMetricsFactory;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
@@ -18,7 +18,6 @@ import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.core.fs.Path;
-import org.apache.flink.runtime.state.storage.FileSystemCheckpointStorage;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -42,13 +41,14 @@ public class SinkStream {
   }
 
   private DataStream<Row> repartition(
-      DataStream<Row> stream, Sink sink, TaskAllocation taskAllocation) {
+      DataStream<Row> stream, Sink sink, TaskAllocation taskAllocation, ConfigBase appConfig) {
     var loader = new TaskAssignerLoader<>(TaskAssignerFactory.class);
     TaskAssignerFactory taskAssignerFactory = loader.load(sink.getDistribution().getClassName());
     SingleOutputStreamOperator<Tuple2<Row, Integer>> distribution;
     if (taskAssignerFactory instanceof TaskAssignerMetricsFactory) {
-      var metricsPath = SinkUtils.getMetricsPath(getPath(env), sink);
-      var metricsStore = new FilesystemMetricsStore(metricsPath);
+      var metricsConfig = appConfig.getMetrics();
+      var metricsPath = SinkUtils.getMetricsPath(new Path(metricsConfig.getStoreUri()), sink);
+      var metricsStore = new FilesystemMetricsStore(metricsPath, metricsConfig.getSkipOnFailure());
       var partitioner =
           new PartitionerMetrics(
               sink, (TaskAssignerMetricsFactory) taskAssignerFactory, taskAllocation, metricsStore);
@@ -87,16 +87,8 @@ public class SinkStream {
         .returns(stream.getType());
   }
 
-  private Path getPath(StreamExecutionEnvironment env) {
-    if (env.getCheckpointConfig().getCheckpointStorage() instanceof FileSystemCheckpointStorage) {
-      var storage = (FileSystemCheckpointStorage) env.getCheckpointConfig().getCheckpointStorage();
-      return storage.getCheckpointPath();
-    } else {
-      throw new RuntimeException("Checkpointing must be configured.");
-    }
-  }
-
-  public StreamStatementSet build(List<Sink> sinks) {
+  public StreamStatementSet build(ConfigBase appConfig) {
+    var sinks = appConfig.getSinks();
     TaskAllocation taskAllocation = new StackedTaskAllocation(sinks, env.getParallelism());
     // Query
     Map<String, DataStream<Row>> queryStream =
@@ -112,7 +104,7 @@ public class SinkStream {
                   if (sink.hasDistribution()) {
                     return Map.entry(
                         sink.getTable(),
-                        repartition(tableEnv.toDataStream(query), sink, taskAllocation));
+                        repartition(tableEnv.toDataStream(query), sink, taskAllocation, appConfig));
                   } else {
                     return Map.entry(sink.getTable(), tableEnv.toDataStream(query));
                   }
