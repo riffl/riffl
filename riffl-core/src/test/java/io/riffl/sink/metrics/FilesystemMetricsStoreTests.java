@@ -2,6 +2,7 @@ package io.riffl.sink.metrics;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.riffl.sink.row.RowKey;
@@ -33,7 +34,7 @@ public class FilesystemMetricsStoreTests {
   @Test
   void metricsShouldBeLoadedFromFile() {
     var metricsStore =
-        new FilesystemMetricsStore(new Path("./src/test/resources/metrics-table_name-"));
+        new FilesystemMetricsStore(new Path("./src/test/resources/metrics-table_name-"), true);
 
     var metrics = metricsStore.loadMetrics(2);
     var result =
@@ -48,7 +49,27 @@ public class FilesystemMetricsStoreTests {
   }
 
   @Test
-  void metricsShouldBeWrittenAndOverwrittenIntoFile(@TempDir java.nio.file.Path tempDir) {
+  void metricsShouldBeLoadedFromFileOrSkipped() {
+    var metricsStore =
+        new FilesystemMetricsStore(
+            new Path("./src/test/resources/non-existent-metrics-table_name-"), true);
+
+    var metrics = metricsStore.loadMetrics(2);
+
+    assertEquals(0, metrics.entrySet().size());
+  }
+
+  @Test
+  void metricsShouldBeLoadedFromFileOrFailed() {
+    var metricsStore =
+        new FilesystemMetricsStore(
+            new Path("./src/test/resources/non-existent-metrics-table_name-"));
+
+    assertThrows(RuntimeException.class, () -> metricsStore.loadMetrics(2));
+  }
+
+  @Test
+  void metricsShouldBeWrittenOrOverwritten(@TempDir java.nio.file.Path tempDir) {
     var tempPrefix = tempDir + "/metrics-";
     var metricsStore = new FilesystemMetricsStore(new Path(tempPrefix));
 

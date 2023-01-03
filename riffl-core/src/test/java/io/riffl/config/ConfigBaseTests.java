@@ -1,25 +1,26 @@
 package io.riffl.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigObject;
+import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueFactory;
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import org.apache.flink.configuration.CheckpointingOptions;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import org.junit.jupiter.api.Test;
 
 public class ConfigBaseTests {
-
-  Parser parser =
-      new FlinkParser(
-          StreamExecutionEnvironment.getExecutionEnvironment(),
-          StreamTableEnvironment.create(StreamExecutionEnvironment.getExecutionEnvironment()));
 
   @Test
   void errorShouldBeThrownIfTableNotUnique() {
@@ -201,12 +202,51 @@ public class ConfigBaseTests {
     assertEquals(ddlInline, config.getCatalogs().get(1).getCreate());
   }
 
-  private ConfigBase getConfigList(String attribute, List<ConfigObject> items) {
+  @Test
+  void metricsConfigurationBeLoadedFromConfigOrCheckpoint() {
+    assertThrows(RuntimeException.class, getConfig()::getMetrics);
+
+    // checkpoint
+    Configuration flinkConfig = new Configuration();
+    flinkConfig.set(
+        CheckpointingOptions.CHECKPOINTS_DIRECTORY, "file:///tmp/metricsStore/checkpoint");
+    var env = StreamExecutionEnvironment.getExecutionEnvironment(flinkConfig);
+
+    Parser parser = new FlinkParser(env, StreamTableEnvironment.create(env));
+
+    var flinkCheckpointConfig = getConfig(parser);
+
+    assertEquals(
+        URI.create("file:///tmp/metricsStore/checkpoint"),
+        flinkCheckpointConfig.getMetrics().getStoreUri());
+
+    // attribute
+    ConfigBase config =
+        getConfig(
+            Map.of(
+                ConfigBase.CONFIG_METRICS_STORE_URI,
+                ConfigValueFactory.fromAnyRef("file:///tmp/metricsStore")));
+
+    assertEquals(URI.create("file:///tmp/metricsStore"), config.getMetrics().getStoreUri());
+
+    // skipOnFailure
+    assertFalse(config.getMetrics().getSkipOnFailure());
+    ConfigBase configSkipOnFailure =
+        getConfig(
+            Map.of(
+                ConfigBase.CONFIG_METRICS_STORE_URI,
+                ConfigValueFactory.fromAnyRef("file:///tmp/metricsStore"),
+                ConfigBase.CONFIG_METRICS_SKIP_ON_FAILURE,
+                ConfigValueFactory.fromAnyRef(true)));
+
+    assertTrue(configSkipOnFailure.getMetrics().getSkipOnFailure());
+  }
+
+  private ConfigBase getConfig(Config application, Parser parser) {
     return new ConfigBase(parser) {
       @Override
       Config getConfig() {
-        return ConfigFactory.defaultApplication()
-            .withValue(attribute, ConfigValueFactory.fromIterable(items));
+        return application;
       }
 
       @Override
@@ -214,5 +254,36 @@ public class ConfigBaseTests {
         return null;
       }
     };
+  }
+
+  private ConfigBase getConfigList(String attribute, List<ConfigObject> items) {
+    return getConfig(
+        ConfigFactory.defaultApplication()
+            .withValue(attribute, ConfigValueFactory.fromIterable(items)));
+  }
+
+  private ConfigBase getConfig(Map<String, ConfigValue> config) {
+    var result = ConfigFactory.defaultApplication();
+    for (var e : config.entrySet()) {
+      result = result.withValue(e.getKey(), e.getValue());
+    }
+
+    return getConfig(result);
+  }
+
+  private ConfigBase getConfig(Parser parser) {
+    return getConfig(ConfigFactory.defaultApplication(), parser);
+  }
+
+  private ConfigBase getConfig(Config application) {
+    Parser parser =
+        new FlinkParser(
+            StreamExecutionEnvironment.getExecutionEnvironment(),
+            StreamTableEnvironment.create(StreamExecutionEnvironment.getExecutionEnvironment()));
+    return getConfig(application, parser);
+  }
+
+  private ConfigBase getConfig() {
+    return getConfig(ConfigFactory.defaultApplication());
   }
 }

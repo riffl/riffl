@@ -10,6 +10,9 @@ execution:
     execution.checkpointing.mode: EXACTLY_ONCE
     state.savepoints.dir: ${properties.state.path}state/savepoints
     state.checkpoints.dir: ${properties.state.path}state/checkpoints
+metrics:
+  storeUri: ${properties.state.path}metrics/
+  skipOnFailure: true
 catalogs:
   - create: " 
       CREATE CATALOG ${properties.catalog.name} WITH (
