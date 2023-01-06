@@ -27,14 +27,14 @@ public class FilesystemMetricsStore implements MetricsStore, Serializable {
       try (var file = fs.open(pathKey.path)) {
         ObjectInputStream objectInput = new ObjectInputStream(file);
         var metrics = (Metrics) objectInput.readObject();
-        logger.info("Loaded metrics for path: {},  {}", pathKey.path, metrics);
+        logger.info("Loaded metrics from: {},  {}", pathKey.path, metrics);
         return metrics;
       } catch (ClassNotFoundException e) {
         throw new RuntimeException(e);
       }
     } catch (IOException e) {
       if (pathKey.skipOnFailure) {
-        logger.warn("Metrics for path: {}, could not be loaded {}", pathKey, e);
+        logger.warn("Metrics from: {}, could not be loaded {}", pathKey.path, e);
         return new Metrics();
       } else {
         throw new RuntimeException(e);

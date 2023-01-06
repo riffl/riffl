@@ -230,16 +230,16 @@ public class ConfigBaseTests {
     assertEquals(URI.create("file:///tmp/metricsStore"), config.getMetrics().getStoreUri());
 
     // skipOnFailure
-    assertFalse(config.getMetrics().getSkipOnFailure());
+    assertTrue(config.getMetrics().getSkipOnFailure());
     ConfigBase configSkipOnFailure =
         getConfig(
             Map.of(
                 ConfigBase.CONFIG_METRICS_STORE_URI,
                 ConfigValueFactory.fromAnyRef("file:///tmp/metricsStore"),
                 ConfigBase.CONFIG_METRICS_SKIP_ON_FAILURE,
-                ConfigValueFactory.fromAnyRef(true)));
+                ConfigValueFactory.fromAnyRef(false)));
 
-    assertTrue(configSkipOnFailure.getMetrics().getSkipOnFailure());
+    assertFalse(configSkipOnFailure.getMetrics().getSkipOnFailure());
   }
 
   private ConfigBase getConfig(Config application, Parser parser) {

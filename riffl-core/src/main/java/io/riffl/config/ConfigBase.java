@@ -96,8 +96,8 @@ public abstract class ConfigBase {
 
     return new Metrics(
         storeUri,
-        config.hasPath(CONFIG_METRICS_SKIP_ON_FAILURE)
-            && config.getBoolean(CONFIG_METRICS_SKIP_ON_FAILURE));
+        !config.hasPath(CONFIG_METRICS_SKIP_ON_FAILURE)
+            || config.getBoolean(CONFIG_METRICS_SKIP_ON_FAILURE));
   }
 
   public List<Database> getDatabases() {
