@@ -22,14 +22,19 @@ name: Riffl application
 # [optional] Properties to expand placeholders specified as ${property...}
 properties:
   catalog.name: "custom_catalog"
-  
+  s3.bucket: "<S3 bucket>"
+
 # Execution configuration overrides
 execution:
   type: FLINK
   configuration:
     execution.checkpointing.interval: 45s
     execution.checkpointing.mode: EXACTLY_ONCE
-
+    
+# Data metrics store location to support advanced distribution algorithms
+metrics:
+  storeUri: s3://${properties.s3.bucket}/metrics/
+  
 # [optional] Catalog/Database definitions to support external integration points like Hive or Iceberg
 catalogs:                                        
   - createUri: hdfs:///riffl/example/catalog.ddl
@@ -92,7 +97,7 @@ CREATE TABLE source_table (
 
 #### Sink
 
-Data output destination and format defined with standard [filesystem connector](https://nightlies.apache.org/flink/flink-docs-release-1.14/docs/connectors/table/filesystem/) or custom e.g. [Iceberg](https://iceberg.apache.org/docs/latest/flink-connector/) connector. 
+Data output destination and format defined with standard [filesystem connector](https://nightlies.apache.org/flink/flink-docs-release-1.15/docs/connectors/table/filesystem/) or custom e.g. [Iceberg](https://iceberg.apache.org/docs/latest/flink-connector/) connector. 
 
 ```
 e.g. location hdfs:///riffl/config/sink.ddl
@@ -112,7 +117,7 @@ WITH (
 ```
 # Deployment
 Supported Flink versions:
-* 1.14
+* 1.15
 
 ### Build
 ```
