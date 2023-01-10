@@ -34,6 +34,9 @@ public abstract class ConfigBase {
 
   static final String CONFIG_EXECUTION = "execution";
 
+  static final String CONFIG_EXECUTION_CHECKPOINT_DIR =
+      CONFIG_EXECUTION + CONFIG_DELIMITER + "configuration.\"state.checkpoints.dir\"";
+
   static final String CONFIG_EXECUTION_CONFIGURATION =
       CONFIG_EXECUTION + CONFIG_DELIMITER + "configuration";
   static final String CONFIG_EXECUTION_TYPE = CONFIG_EXECUTION + CONFIG_DELIMITER + "type";
@@ -83,6 +86,8 @@ public abstract class ConfigBase {
     URI storeUri;
     if (config.hasPath(CONFIG_METRICS_STORE_URI)) {
       storeUri = URI.create(config.getString(CONFIG_METRICS_STORE_URI));
+    } else if (config.hasPath(CONFIG_EXECUTION_CHECKPOINT_DIR)) {
+      storeUri = URI.create(config.getString(CONFIG_EXECUTION_CHECKPOINT_DIR));
     } else {
       var checkpointUri = parser.getCheckpointUri();
       if (checkpointUri != null) {

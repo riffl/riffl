@@ -229,6 +229,16 @@ public class ConfigBaseTests {
 
     assertEquals(URI.create("file:///tmp/metricsStore"), config.getMetrics().getStoreUri());
 
+    // execution attribute
+    ConfigBase configExecution =
+        getConfig(
+            Map.of(
+                ConfigBase.CONFIG_EXECUTION_CHECKPOINT_DIR,
+                ConfigValueFactory.fromAnyRef("file:///tmp/metricsStore")));
+
+    assertEquals(
+        URI.create("file:///tmp/metricsStore"), configExecution.getMetrics().getStoreUri());
+
     // skipOnFailure
     assertTrue(config.getMetrics().getSkipOnFailure());
     ConfigBase configSkipOnFailure =
