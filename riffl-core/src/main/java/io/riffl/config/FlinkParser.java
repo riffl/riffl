@@ -30,4 +30,9 @@ public class FlinkParser implements Parser {
     }
     return checkpointUri;
   }
+
+  @Override
+  public Integer getDefaultParallelism() {
+    return env.getParallelism();
+  }
 }

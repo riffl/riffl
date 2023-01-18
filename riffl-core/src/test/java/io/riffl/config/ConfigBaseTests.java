@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.flink.configuration.CheckpointingOptions;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.CoreOptions;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
@@ -250,6 +251,47 @@ public class ConfigBaseTests {
                 ConfigValueFactory.fromAnyRef(false)));
 
     assertFalse(configSkipOnFailure.getMetrics().getSkipOnFailure());
+  }
+
+  @Test
+  void sourceParallelismShouldBeLoadedOrDefault() {
+    Configuration flinkConfig = new Configuration();
+    flinkConfig.set(CoreOptions.DEFAULT_PARALLELISM, 10);
+    var env = StreamExecutionEnvironment.getExecutionEnvironment(flinkConfig);
+
+    Parser parser = new FlinkParser(env, StreamTableEnvironment.create(env));
+
+    var configDefaultParallelism =
+        getConfig(
+            getConfigList(
+                    ConfigBase.CONFIG_SOURCES,
+                    List.of(
+                        ConfigValueFactory.fromMap(
+                            Map.of(
+                                ConfigBase.CONFIG_CREATE,
+                                "CREATE SOURCE",
+                                ConfigBase.CONFIG_SOURCE_PARALLELISM,
+                                20))))
+                .getConfig(),
+            parser);
+
+    assertEquals(10, configDefaultParallelism.getSources().get(0).getParallelism());
+
+    var configParamParallelism =
+        getConfig(
+            getConfigList(
+                    ConfigBase.CONFIG_SOURCES,
+                    List.of(
+                        ConfigValueFactory.fromMap(
+                            Map.of(
+                                ConfigBase.CONFIG_CREATE,
+                                "CREATE SOURCE",
+                                ConfigBase.CONFIG_SOURCE_PARALLELISM,
+                                5))))
+                .getConfig(),
+            parser);
+
+    assertEquals(5, configParamParallelism.getSources().get(0).getParallelism());
   }
 
   private ConfigBase getConfig(Config application, Parser parser) {

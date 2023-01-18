@@ -2,6 +2,7 @@ package io.riffl.sink;
 
 import io.riffl.config.ConfigBase;
 import io.riffl.config.Sink;
+import io.riffl.config.Source;
 import io.riffl.sink.allocation.StackedTaskAllocation;
 import io.riffl.sink.allocation.TaskAllocation;
 import io.riffl.sink.metrics.FilesystemMetricsStore;
@@ -10,8 +11,11 @@ import io.riffl.sink.row.tasks.TaskAssignerDefaultFactory;
 import io.riffl.sink.row.tasks.TaskAssignerFactory;
 import io.riffl.sink.row.tasks.TaskAssignerLoader;
 import io.riffl.sink.row.tasks.TaskAssignerMetricsFactory;
+import io.riffl.utils.MetaRegistration;
+import io.riffl.utils.TableHelper;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
@@ -24,6 +28,8 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.bridge.java.StreamStatementSet;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
+import org.apache.flink.table.api.config.ExecutionConfigOptions;
+import org.apache.flink.table.catalog.ObjectIdentifier;
 import org.apache.flink.types.Row;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,16 +38,17 @@ public class SinkStream {
 
   private static final Logger logger = LoggerFactory.getLogger(SinkStream.class);
   private final StreamExecutionEnvironment env;
-  private final StreamTableEnvironment tableEnv;
 
-  public SinkStream(StreamExecutionEnvironment env, StreamTableEnvironment tableEnv) {
+  public SinkStream(StreamExecutionEnvironment env) {
     this.env = env;
-    this.tableEnv = tableEnv;
-    logger.info(this.tableEnv.getCurrentCatalog());
   }
 
   private DataStream<Row> repartition(
-      DataStream<Row> stream, Sink sink, TaskAllocation taskAllocation, ConfigBase appConfig) {
+      DataStream<Row> stream,
+      Sink sink,
+      TaskAllocation taskAllocation,
+      ConfigBase appConfig,
+      int sourceParallelism) {
     var loader = new TaskAssignerLoader<>(TaskAssignerFactory.class);
     TaskAssignerFactory taskAssignerFactory = loader.load(sink.getDistribution().getClassName());
     SingleOutputStreamOperator<Tuple2<Row, Integer>> distribution;
@@ -56,6 +63,7 @@ public class SinkStream {
       distribution =
           stream
               .process(partitioner)
+              .setParallelism(sourceParallelism)
               .returns(Types.TUPLE(stream.getType(), TypeInformation.of(Integer.class)))
               .name(SinkUtils.getOperatorName(sink, "partitioner"))
               .uid(SinkUtils.getOperatorName(sink, "partitioner"));
@@ -73,6 +81,7 @@ public class SinkStream {
       distribution =
           stream
               .process(partitioner)
+              .setParallelism(sourceParallelism)
               .returns(Types.TUPLE(stream.getType(), TypeInformation.of(Integer.class)))
               .name(SinkUtils.getOperatorName(sink, "partitioner"))
               .uid(SinkUtils.getOperatorName(sink, "partitioner"));
@@ -87,9 +96,41 @@ public class SinkStream {
         .returns(stream.getType());
   }
 
-  public StreamStatementSet build(ConfigBase appConfig) {
+  public StreamStatementSet build(ConfigBase appConfig, Map<Source, DataStream<Row>> sources) {
     var sinks = appConfig.getSinks();
     TaskAllocation taskAllocation = new StackedTaskAllocation(sinks, env.getParallelism());
+
+    var tableEnv = StreamTableEnvironment.create(env);
+    tableEnv
+        .getConfig()
+        .getConfiguration()
+        .setInteger(
+            ExecutionConfigOptions.TABLE_EXEC_RESOURCE_DEFAULT_PARALLELISM, env.getParallelism());
+
+    appConfig
+        .getCatalogs()
+        .forEach(catalog -> MetaRegistration.register(tableEnv, catalog.getCreate()));
+    appConfig
+        .getDatabases()
+        .forEach(database -> MetaRegistration.register(tableEnv, database.getCreate()));
+
+    sources.forEach(
+        (source, value) -> {
+          ObjectIdentifier sourceId =
+              TableHelper.getCreateTableIdentifier(source.getCreate(), env, tableEnv);
+          Table inputTable = tableEnv.fromDataStream(value);
+
+          tableEnv.createTemporaryView(sourceId.asSummaryString(), inputTable);
+        });
+
+    var sourceParallelism =
+        sources.keySet().stream()
+            .map(Source::getParallelism)
+            .filter(Objects::nonNull)
+            .mapToInt(Integer::intValue)
+            .max()
+            .orElse(env.getParallelism());
+
     // Query
     Map<String, DataStream<Row>> queryStream =
         sinks.stream()
@@ -104,9 +145,15 @@ public class SinkStream {
                   if (sink.hasDistribution()) {
                     return Map.entry(
                         sink.getTable(),
-                        repartition(tableEnv.toDataStream(query), sink, taskAllocation, appConfig));
+                        repartition(
+                            tableEnv.toDataStream(query),
+                            sink,
+                            taskAllocation,
+                            appConfig,
+                            sourceParallelism));
                   } else {
-                    return Map.entry(sink.getTable(), tableEnv.toDataStream(query));
+                    var stream = tableEnv.toDataStream(query);
+                    return Map.entry(sink.getTable(), stream.map(s -> s).returns(stream.getType()));
                   }
                 })
             .collect(Collectors.toMap(Entry::getKey, Entry::getValue));
