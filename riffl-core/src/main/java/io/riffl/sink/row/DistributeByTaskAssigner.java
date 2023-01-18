@@ -36,7 +36,7 @@ public class DistributeByTaskAssigner implements TaskAssigner, Serializable {
     this.keyColumns =
         ConfigUtils.listProperty(sink.getDistribution().getProperties().get(PROPERTIES_KEYS));
     this.tasksAssignment = tasksAssignment;
-    calculateAssignment(tasks, tasksAssignment, metrics);
+    calculateAssignment(tasks, this.tasksAssignment, metrics);
 
     if (logger.isDebugEnabled()) {
       var assignment =

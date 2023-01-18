@@ -11,6 +11,7 @@ import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
+import org.apache.flink.table.api.config.ExecutionConfigOptions;
 import org.apache.flink.table.catalog.Catalog;
 import org.apache.flink.table.catalog.ObjectIdentifier;
 import org.apache.flink.table.catalog.exceptions.TableAlreadyExistException;
@@ -26,22 +27,28 @@ public class SourceStream {
   private static final String TEMP_TABLE_POSTFIX = "-riffl-tmp";
 
   private final StreamExecutionEnvironment env;
-  private final StreamTableEnvironment tableEnv;
 
-  public SourceStream(StreamExecutionEnvironment env, StreamTableEnvironment tableEnv) {
+  public SourceStream(StreamExecutionEnvironment env) {
     this.env = env;
-    this.tableEnv = tableEnv;
-    logger.info(this.tableEnv.getCurrentCatalog());
   }
 
   public Map<Source, DataStream<Row>> build(List<Source> sources) {
     return sources.stream()
         .map(
             source -> {
+              var tableEnv = StreamTableEnvironment.create(env);
+              if (source.getParallelism() != null) {
+                tableEnv
+                    .getConfig()
+                    .getConfiguration()
+                    .setInteger(
+                        ExecutionConfigOptions.TABLE_EXEC_RESOURCE_DEFAULT_PARALLELISM,
+                        source.getParallelism());
+              }
               tableEnv.executeSql(source.getCreate());
               ObjectIdentifier sourceId =
                   TableHelper.getCreateTableIdentifier(source.getCreate(), env, tableEnv);
-
+              logger.info("Created table: {}", sourceId.asSummaryString());
               Table map;
               if (source.getMap() != null) {
                 map = tableEnv.sqlQuery(source.getMap());
@@ -70,8 +77,9 @@ public class SourceStream {
                   source.getRebalance()
                       ? tableEnv.toDataStream(map).rebalance()
                       : tableEnv.toDataStream(map));
-              return Map.entry(source, tableEnv.from(sourceId.asSummaryString()));
+              return Map.entry(
+                  source, tableEnv.toDataStream(tableEnv.from(sourceId.asSummaryString())));
             })
-        .collect(Collectors.toMap(Entry::getKey, e -> tableEnv.toDataStream(e.getValue())));
+        .collect(Collectors.toMap(Entry::getKey, Entry::getValue));
   }
 }

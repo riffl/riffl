@@ -2,15 +2,16 @@ package io.riffl.config;
 
 public class Source {
 
-  final String create;
-  final String map;
+  private final String create;
+  private final String map;
+  private final Boolean rebalance;
+  private final Integer parallelism;
 
-  final Boolean rebalance;
-
-  public Source(String create, String map, boolean rebalance) {
+  public Source(String create, String map, boolean rebalance, Integer parallelism) {
     this.create = create;
     this.map = map;
     this.rebalance = rebalance;
+    this.parallelism = parallelism;
   }
 
   public String getCreate() {
@@ -23,5 +24,9 @@ public class Source {
 
   public Boolean getRebalance() {
     return rebalance;
+  }
+
+  public Integer getParallelism() {
+    return parallelism;
   }
 }

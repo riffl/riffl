@@ -17,6 +17,7 @@ public abstract class ConfigBase {
   static final String CONFIG_SINKS = "sinks";
   static final String CONFIG_NAME = "name";
   static final String CONFIG_SOURCE_REBALANCE = "rebalance";
+  static final String CONFIG_SOURCE_PARALLELISM = "parallelism";
   static final String CONFIG_PARALLELISM = "parallelism";
   static final String CONFIG_CREATE_URI = "createUri";
   static final String CONFIG_CREATE = "create";
@@ -127,7 +128,12 @@ public abstract class ConfigBase {
                         ? loadResourceOrStmt(source, CONFIG_MAP_URI, CONFIG_MAP)
                         : null,
                     source.hasPath(CONFIG_SOURCE_REBALANCE)
-                        && source.getBoolean(CONFIG_SOURCE_REBALANCE)))
+                        && source.getBoolean(CONFIG_SOURCE_REBALANCE),
+                    source.hasPath(CONFIG_SOURCE_PARALLELISM)
+                        ? source.getInt(CONFIG_SOURCE_PARALLELISM) < parser.getDefaultParallelism()
+                            ? source.getInt(CONFIG_SOURCE_PARALLELISM)
+                            : parser.getDefaultParallelism()
+                        : null))
         .collect(Collectors.toList());
   }
 

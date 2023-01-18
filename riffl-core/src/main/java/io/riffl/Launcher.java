@@ -5,7 +5,6 @@ import io.riffl.config.FlinkParser;
 import io.riffl.config.YamlConfig;
 import io.riffl.sink.SinkStream;
 import io.riffl.source.SourceStream;
-import io.riffl.utils.MetaRegistration;
 import java.util.Properties;
 import java.util.stream.Collectors;
 import org.apache.flink.configuration.Configuration;
@@ -43,18 +42,15 @@ public class Launcher {
       env = StreamExecutionEnvironment.getExecutionEnvironment(config);
     }
 
-    StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env);
+    var defaultParallelism = env.getParallelism();
 
-    appConfig
-        .getCatalogs()
-        .forEach(catalog -> MetaRegistration.register(tableEnv, catalog.getCreate()));
-    appConfig
-        .getDatabases()
-        .forEach(database -> MetaRegistration.register(tableEnv, database.getCreate()));
+    var sources = new SourceStream(env).build(appConfig.getSources());
 
-    new SourceStream(env, tableEnv).build(appConfig.getSources());
+    // Reset default parallelism
+    env.setParallelism(defaultParallelism);
 
-    new SinkStream(env, tableEnv).build(appConfig).attachAsDataStream();
+    new SinkStream(env).build(appConfig, sources).attachAsDataStream();
+
     try {
       env.execute();
     } catch (Exception e) {

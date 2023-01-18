@@ -6,4 +6,6 @@ interface Parser {
   String getIdentifier(String stmt);
 
   URI getCheckpointUri();
+
+  Integer getDefaultParallelism();
 }
