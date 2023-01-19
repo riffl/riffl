@@ -3,10 +3,12 @@ package io.riffl.sink;
 import io.riffl.config.ConfigBase;
 import io.riffl.config.Sink;
 import io.riffl.config.Source;
-import io.riffl.sink.allocation.StackedTaskAllocation;
 import io.riffl.sink.allocation.TaskAllocation;
+import io.riffl.sink.allocation.TaskAllocationFactory;
+import io.riffl.sink.allocation.TaskAllocationLoader;
 import io.riffl.sink.metrics.FilesystemMetricsStore;
 import io.riffl.sink.metrics.MetricsSink;
+import io.riffl.sink.row.RebalanceFactory;
 import io.riffl.sink.row.tasks.TaskAssignerDefaultFactory;
 import io.riffl.sink.row.tasks.TaskAssignerFactory;
 import io.riffl.sink.row.tasks.TaskAssignerLoader;
@@ -47,10 +49,9 @@ public class SinkStream {
       DataStream<Row> stream,
       Sink sink,
       TaskAllocation taskAllocation,
+      TaskAssignerFactory taskAssignerFactory,
       ConfigBase appConfig,
       int sourceParallelism) {
-    var loader = new TaskAssignerLoader<>(TaskAssignerFactory.class);
-    TaskAssignerFactory taskAssignerFactory = loader.load(sink.getDistribution().getClassName());
     SingleOutputStreamOperator<Tuple2<Row, Integer>> distribution;
     if (taskAssignerFactory instanceof TaskAssignerMetricsFactory) {
       var metricsConfig = appConfig.getMetrics();
@@ -98,7 +99,12 @@ public class SinkStream {
 
   public StreamStatementSet build(ConfigBase appConfig, Map<Source, DataStream<Row>> sources) {
     var sinks = appConfig.getSinks();
-    TaskAllocation taskAllocation = new StackedTaskAllocation(sinks, env.getParallelism());
+    ;
+    var taskAllocationLoader = new TaskAllocationLoader<>(TaskAllocationFactory.class);
+    var taskAllocationFactory =
+        taskAllocationLoader.load(appConfig.getSinksTaskAllocation().getClassName());
+
+    var taskAllocation = taskAllocationFactory.create(sinks, env.getParallelism());
 
     var tableEnv = StreamTableEnvironment.create(env);
     tableEnv
@@ -141,19 +147,38 @@ public class SinkStream {
                   }
 
                   Table query = tableEnv.sqlQuery(sink.getQuery());
-
+                  var stream = tableEnv.toDataStream(query);
                   if (sink.hasDistribution()) {
+                    var loader = new TaskAssignerLoader<>(TaskAssignerFactory.class);
+                    TaskAssignerFactory taskAssignerFactory =
+                        loader.load(sink.getDistribution().getClassName());
                     return Map.entry(
                         sink.getTable(),
                         repartition(
-                            tableEnv.toDataStream(query),
+                            stream,
                             sink,
                             taskAllocation,
+                            taskAssignerFactory,
                             appConfig,
                             sourceParallelism));
                   } else {
-                    var stream = tableEnv.toDataStream(query);
-                    return Map.entry(sink.getTable(), stream.map(s -> s).returns(stream.getType()));
+                    if (sink.hasParallelism()) {
+                      var loader = new TaskAssignerLoader<>(TaskAssignerFactory.class);
+                      TaskAssignerFactory taskAssignerFactory =
+                          loader.load(RebalanceFactory.class.getCanonicalName());
+                      return Map.entry(
+                          sink.getTable(),
+                          repartition(
+                              stream,
+                              sink,
+                              taskAllocation,
+                              taskAssignerFactory,
+                              appConfig,
+                              sourceParallelism));
+                    } else {
+                      return Map.entry(
+                          sink.getTable(), stream.map(s -> s).returns(stream.getType()));
+                    }
                   }
                 })
             .collect(Collectors.toMap(Entry::getKey, Entry::getValue));

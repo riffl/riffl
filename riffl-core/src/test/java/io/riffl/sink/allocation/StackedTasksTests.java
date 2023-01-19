@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Properties;
 import org.junit.jupiter.api.Test;
 
-public class StackedTaskAllocationTests {
+public class StackedTasksTests {
 
   @Test
   void tasksShouldBeAllocated() {
@@ -19,7 +19,7 @@ public class StackedTaskAllocationTests {
             new Sink("", "sink-3", "", null, null),
             new Sink("", "sink-4", "", null, 5));
 
-    var alloc = new StackedTaskAllocation(sinks, 10);
+    var alloc = new StackedTasks(sinks, 10);
     alloc.configure();
 
     assertEquals(List.of(1, 2, 7, 9, 6), alloc.getSinkTasks(sinks.get(0)));

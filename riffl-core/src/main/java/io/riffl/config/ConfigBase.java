@@ -1,6 +1,7 @@
 package io.riffl.config;
 
 import com.typesafe.config.Config;
+import io.riffl.sink.allocation.StackedTasksFactory;
 import java.net.URI;
 import java.text.MessageFormat;
 import java.util.List;
@@ -48,6 +49,13 @@ public abstract class ConfigBase {
       CONFIG_METRICS + CONFIG_DELIMITER + "storeUri";
   protected static final String CONFIG_METRICS_SKIP_ON_FAILURE =
       CONFIG_METRICS + CONFIG_DELIMITER + "skipOnFailure";
+
+  private static final String CONFIG_SINK_TASK_ALLOCATION_CLASS_NAME_DEFAULT =
+      StackedTasksFactory.class.getCanonicalName();
+
+  private static final String CONFIG_SINK_TASK_ALLOCATION = "sinkTaskAllocation";
+  private static final String CONFIG_SINK_TASK_ALLOCATION_CLASS_NAME =
+      CONFIG_SINK_TASK_ALLOCATION + CONFIG_DELIMITER + "className";
 
   protected ConfigBase(Parser parser) {
     this.parser = parser;
@@ -135,6 +143,14 @@ public abstract class ConfigBase {
                             : parser.getDefaultParallelism()
                         : null))
         .collect(Collectors.toList());
+  }
+
+  public SinkTaskAllocation getSinksTaskAllocation() {
+    Config config = getConfig();
+    return new SinkTaskAllocation(
+        config.hasPath(CONFIG_SINK_TASK_ALLOCATION_CLASS_NAME)
+            ? config.getString(CONFIG_SINK_TASK_ALLOCATION_CLASS_NAME)
+            : CONFIG_SINK_TASK_ALLOCATION_CLASS_NAME_DEFAULT);
   }
 
   public List<Sink> getSinks() {
