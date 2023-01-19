@@ -48,6 +48,8 @@ sources:
         WHERE (type = 1 AND RAND_INTEGER(0,100) BETWEEN 0 AND 100)
            OR (type = 2 AND RAND_INTEGER(0,100) BETWEEN 0 AND 60)
            OR (type > 2 AND RAND_INTEGER(0,100) BETWEEN 0 AND 30)"
+sinkTaskAllocation:
+  className: "io.riffl.sink.allocation.PercentageSplitTasksFactory"
 sinks:
 #  - create: "
 #      CREATE TABLE IF NOT EXISTS sink_default (
@@ -86,7 +88,7 @@ sinks:
         *,
         CAST(DATE_FORMAT(CURRENT_TIMESTAMP, 'yyyy-MM-dd') AS STRING) AS dt, 
         CAST(DATE_FORMAT(CURRENT_TIMESTAMP, 'HH') AS STRING) AS hr FROM source_product"
-    parallelism: 4
+    parallelism: 40
     distribution:
       className: "io.riffl.sink.row.DistributeByFactory"
       properties:
@@ -112,7 +114,7 @@ sinks:
         *,
         CAST(DATE_FORMAT(CURRENT_TIMESTAMP, 'yyyy-MM-dd') AS STRING) AS dt, 
         CAST(DATE_FORMAT(CURRENT_TIMESTAMP, 'HH') AS STRING) AS hr FROM source_product"
-    parallelism: 4
+    parallelism: 30
     distribution:
       className: "io.riffl.sink.row.DistributeByFactory"
       properties:
@@ -138,7 +140,7 @@ sinks:
         *,
         CAST(DATE_FORMAT(CURRENT_TIMESTAMP, 'yyyy-MM-dd') AS STRING) AS dt, 
         CAST(DATE_FORMAT(CURRENT_TIMESTAMP, 'HH') AS STRING) AS hr FROM source_product"
-    parallelism: 4
+    parallelism: 30
     distribution:
       className: "io.riffl.sink.row.KeyByFactory"
       properties:
