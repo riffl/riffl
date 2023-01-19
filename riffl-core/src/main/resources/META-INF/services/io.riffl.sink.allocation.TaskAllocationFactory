@@ -1,0 +1,2 @@
+io.riffl.sink.allocation.StackedTasksFactory
+io.riffl.sink.allocation.PercentageSplitTasksFactory

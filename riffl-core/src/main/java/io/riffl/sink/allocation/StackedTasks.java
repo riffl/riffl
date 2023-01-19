@@ -14,13 +14,13 @@ import java.util.stream.IntStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class StackedTaskAllocation extends TaskAllocation {
+public class StackedTasks extends TaskAllocation {
 
-  private static final Logger logger = LoggerFactory.getLogger(StackedTaskAllocation.class);
+  private static final Logger logger = LoggerFactory.getLogger(StackedTasks.class);
 
   private Map<String, List<Integer>> state = new HashMap<>();
 
-  public StackedTaskAllocation(List<Sink> sinks, int parallelism) {
+  public StackedTasks(List<Sink> sinks, int parallelism) {
     super(sinks, parallelism);
   }
 
